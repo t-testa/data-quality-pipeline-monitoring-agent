@@ -226,7 +226,9 @@ def evaluate_result(case, row, baseline, result, observation):
     return checks
 
 
-def case_run(index, key, live=False, path=LEDGER):
+def case_run(
+    index, key, live=False, path=LEDGER, *, max_request_bytes=MAX_REQUEST_BYTES, reserve_attempt=None
+):
     """Exercise the real application projection, provider adapter and grounding validator."""
     import httpx
 
@@ -257,7 +259,7 @@ def case_run(index, key, live=False, path=LEDGER):
             body = request.content
             payload = json.loads(body)
             if (
-                len(body) > MAX_REQUEST_BYTES
+                len(body) > max_request_bytes
                 or payload.get("model") != MODEL
                 or payload.get("max_output_tokens") != OUTPUT_LIMIT
                 or payload.get("store") is not False
@@ -274,7 +276,7 @@ def case_run(index, key, live=False, path=LEDGER):
                 request_sha256=hashlib.sha256(body).hexdigest(),
             )
             if live:
-                reserve(case[0], path)
+                (reserve_attempt or reserve)(case[0], path)
             observation["request_count"] += 1
 
         def response_metadata(response):

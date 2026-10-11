@@ -5,6 +5,10 @@ are authorized. Production acceptance remains blocked. The failed case was not
 retried. A subsequent offline contract/observability fix is documented below;
 it does not change these historical live results.
 
+A later, separately approved [three-case targeted retest](targeted-ai-evaluation.md)
+passed 3/3 using the offline reference fix. That new approval is also exhausted;
+the original result and missing historical response details remain unchanged.
+
 ## Configuration and safeguards
 
 Requested and returned model on every call: **gpt-4.1-mini-2025-04-14**, the exact
@@ -200,5 +204,7 @@ This bounded sample does not prove general model reliability, every injection
 defense, actual provider outage behavior or autonomous MCP selection. Provider
 errors, refusals, invalid contracts and timeouts remain offline-tested. Existing
 image vulnerabilities are unresolved and unaccepted. No Azure resources,
-NorthstarBI data or existing monitoring history changed. The offline application
-fix has not been rolled out to the running dashboard or retested with a paid model.
+NorthstarBI data or existing monitoring history changed. At the end of the offline
+investigation the fix had not been rolled out or retested with a paid model. The
+later separately approved three-case retest is linked above; the dashboard remains
+unchanged.

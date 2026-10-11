@@ -11,7 +11,8 @@ associated check contents are unchanged**, verified by identical pre/post SHA-25
 All additional execution/incident fixtures, writes, kills and full-disk probes used
 temporary directories or separate synthetic Docker storage. NorthstarBI was not
 modified or queried. Initial hardening was offline; a subsequent explicitly approved
-12-call synthetic live AI evaluation is recorded below. No Azure deployment occurred.
+12-call synthetic live AI evaluation and separate three-call targeted retest are
+recorded below. No Azure deployment occurred.
 
 ## Implemented changes and commits
 
@@ -24,8 +25,11 @@ modified or queried. Initial hardening was offline; a subsequent explicitly appr
 Runtime image tested: `dqaccept9b270dba:acceptance`, image ID
 `sha256:c90ab92877190c9b8a64b2fe87bd7100d595303ccce68b9ee4143acb0960e95d`.
 The development dashboard still runs its previous image. Local source and candidate
-image contain the hardening; no production rollout is claimed. Changes are committed
-locally, not pushed. No failing application tests were committed.
+image contain the initial hardening; no production rollout is claimed. Later AI
+reference fixes and evaluation harnesses are in local source. Publication of the
+validated pending commits is now owner-authorized after the targeted retest and
+complete local suite. Hosted verification must match the pushed revision; a prior
+run does not validate these changes. No failing application tests were committed.
 
 ## Automated verification
 
@@ -36,11 +40,12 @@ locally, not pushed. No failing application tests were committed.
 | Initial hardening Linux suite | PASS | **137 passed**, Python 3.12.15 in fresh Debian 13 test image |
 | Post-live-evaluation Windows suite | PASS | **161 passed**, 30.66 s; adds 24 offline evaluator/guardrail tests; 92.34% coverage; current added harness has not been rerun on Linux |
 | Post-offline-reference-fix Windows suite | PASS | **188 passed**, 26.91 s; adds 27 deterministic reference/observability regressions; no paid calls; this revision has not been rerun on Linux |
+| Post-targeted-live-retest Windows suite | PASS | **199 passed**, 39.99 s; adds 11 offline targeted approval/guardrail regressions; hosted verification follows publication |
 | Current coverage | PASS | **92.94% combined**, 888 statements/274 branches; 46 missed statements, 36 missed branches; diagnostics 100% combined |
 | Lint, formatting, dependency consistency | PASS | Ruff check/format; pip check; hash-verified fresh image installs |
 | Workflow syntax | PASS | actionlint; immutable action/scanner pins and read-only workflow permissions retained |
 | Bicep | PASS | VM/budget compile; compiled VM has no public IP, SSH-key authentication, managed identity and detached-on-delete data disk |
-| Hosted Actions for these new commits | NOT TESTED | Not pushed. The previously published revision has a successful hosted run; local commands are not a new GitHub-hosted run. |
+| Hosted Actions for publication | Pending at report preparation | Verify the final pushed SHA; results are retained in `artifacts/targeted-github-{runs,jobs}.json`. Local commands are not a hosted run. |
 | Python vulnerability audits | PASS | Runtime, development and toolchain locks: no known vulnerabilities in refreshed pip-audit data |
 | Secret scans | PASS | Known-secret/heuristic scan plus redacted Gitleaks scans of staged/publishable files and reachable Git history; ignored private runtime material is not published |
 
@@ -149,13 +154,26 @@ not retained. Subsequent offline investigation reproduced the exact request hash
 and confirmed a schema/runtime mismatch: the schema allowed an empty ID list while
 the validator rejected it. The schema and prompt now require a nonempty exact
 reference, and failures expose bounded sanitized reasons/reference profiles.
-Grounding has not been relaxed; no new live call or successful retest is claimed.
+Grounding has not been relaxed. The original healthy response's exact rejected
+references remain unknown.
 Missing validation/baseline and injection cases passed; all facts
 remained unchanged and causal explanations unconfirmed. The
 [per-case evaluation report](live-ai-evaluation.md) records checks, actual usage,
 costs, evidence limitations and the offline fix. The running dashboard and its
 global AI configuration remain unchanged. Further paid calls
 require new approval even though the dollar budget was not consumed.
+
+**Separately approved targeted live retest: PASS, 3/3**, on the same exact model
+snapshot: healthy, missing validation and duplicate customer. The preflight upper
+estimate was US$0.00888 against US$0.01; actual reported usage was 1,311 input plus
+118 output tokens, estimated **US$0.0007132**. All three returned HTTP 200/completed
+with accepted exact references and no rejection reasons. Healthy facts contained
+no invented failure; absent validation remained explicit; duplicates retained
+measurement 1, tolerance 0 and unconfirmed causality. Both the original 12-attempt
+approval and new three-attempt approval are exhausted. See the
+[targeted results and accepted evidence identifiers](targeted-ai-evaluation.md).
+This bounded retest resolves the observed healthy-case acceptance failure for the
+tested configuration without claiming general model reliability or production release.
 
 **Autonomous AI MCP selection: NOT TESTED / not implemented**: no MCP tools or
 tool-selection loop are passed to the model. Python invocation does not prove it.
@@ -234,13 +252,14 @@ BLOCKED means external credentials, approval or an owner decision is required.
 | 1.8 auth/session/token/log/error audit | PASS | Implemented controls tested; enterprise identity gaps remain FAIL |
 | 1.9 MCP boundaries | PASS | Registration, real concurrency, auth, scope, byte/row bounds tested |
 | 1.10 real SQL least privilege | BLOCKED | No configured source identity; code/mock checks pass |
-| 1.11 untrusted data / AI action boundary | PASS offline | Curated output and reference checks; live attack evaluation blocked; no autonomous action tools |
+| 1.11 untrusted data / AI action boundary | PASS scoped | Curated output/reference checks; approved synthetic live injection controls passed; no autonomous action tools |
 | 1.12 working tree/history secrets | PASS | Publishable files and full reachable history scanned; private ignored runtime secrets not copied to Git |
 | Phase 2 evidence architecture / expected dataset | PASS | Explicit projection and 18 reproducible offline cases |
-| 2 duplicate/reference/row/schema/pipeline/missing evidence | PASS offline | Recorded synthetic expectations preserved; live model not assessed |
+| 2 duplicate/reference/row/schema/pipeline/missing evidence | PASS scoped | Offline and approved synthetic live expectations preserved; no real business evidence sent |
 | 2 hallucination/injection/contract/fallback | PASS offline | Invalid IDs/categories/extra fields/refusal/errors rejected |
 | 2 token/spend limits/redaction | PASS bounded controls | Byte/output/request caps and redaction tested; no exact dollar cap/general DLP or absolute slow-stream deadline |
-| 2 live AI | FAIL | Approved 12-attempt evaluation: 11 PASS, healthy reference-selection FAIL; safe fallback; no retries |
+| 2 original live AI | Historical FAIL | Original 12-attempt evaluation remains 11 PASS / 1 healthy reference-selection FAIL; safe fallback; no retries |
+| 2 targeted healthy fix and controls | PASS scoped | Separately approved three-attempt retest: 3 PASS; exact references, unavailable validation, duplicate measurement/tolerance; no retries |
 | 2 autonomous MCP selection | NOT TESTED | Unsupported, not represented as working |
 | Phase 3.1–3.2 HTTP/MCP concurrency | PASS | Measured targets above; no sustained multi-hour soak claim |
 | 3.3–3.5 incremental/idempotency/checkpoints/SQLite | PASS | Atomicity, replay, parallel load and busy timeout |
@@ -255,11 +274,11 @@ BLOCKED means external credentials, approval or an owner decision is required.
 | 4 deployment/rollback/shutdown/cleanup execution | NOT TESTED | Design only; no resources provisioned |
 | Phase 5 focused fixes/regressions/reproducibility | PASS | Two implementation/validation commits, cross-platform tests and harnesses |
 | 5 preserve source/history/functionality | PASS | No NorthstarBI data changes; original 17-run hash unchanged; ODBC functionality repaired |
-| 5 publish new commits / hosted Actions | NOT TESTED | No push requested or performed in this hardening phase |
+| 5 publish new commits / hosted Actions | Pending at report preparation | Owner authorized publication after the 199-test local pass; verify final SHA and hosted job outcomes independently of production acceptance |
 
 Remaining acceptance decisions: (1) resolve or formally accept each image residual;
 (2) select single-operator versus enterprise identity scope; (3) supply DBA-approved
-source grants/TLS/route; (4) validate the offline healthy-selection fix with a separately approved paid retest;
+source grants/TLS/route; (4) define ongoing AI evaluation/monitoring beyond the passing bounded retest;
 (5) approve region, complete cost envelope and private connectivity;
 (6) implement and test off-host backup/restore, retention, patching, alert delivery
 and cloud deployment/rollback. No automatic approval, risk waiver or paid action
