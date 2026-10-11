@@ -1,0 +1,12 @@
+[
+  {"id":"customers_name","name":"Required customer name","table":"Customers","schema_name":"dbo","kind":"null","column":"CustomerName"},
+  {"id":"customers_unique","name":"Unique customer key","table":"Customers","schema_name":"dbo","kind":"duplicate","column":"CustomerID"},
+  {"id":"orders_customer","name":"Orders reference customers","table":"Orders","schema_name":"dbo","kind":"reference","column":"CustomerID","other_table":"Customers","other_column":"CustomerID"},
+  {"id":"lines_order","name":"Lines reference orders","table":"OrderLines","schema_name":"dbo","kind":"reference","column":"OrderID","other_table":"Orders","other_column":"OrderID"},
+  {"id":"lines_product","name":"Lines reference products","table":"OrderLines","schema_name":"dbo","kind":"reference","column":"ProductID","other_table":"Products","other_column":"ProductID"},
+  {"id":"orders_count","name":"Orders nonempty","table":"Orders","schema_name":"dbo","kind":"row_count","minimum":1},
+  {"id":"quantity_positive","name":"Positive order quantity","table":"OrderLines","schema_name":"dbo","kind":"numeric_range","column":"Quantity","minimum":1},
+  {"id":"cost_price","name":"Unit cost does not exceed price","table":"OrderLines","schema_name":"dbo","kind":"business_rule","column":"UnitCost","other_column":"UnitPrice","operator":"le","severity":"warning"},
+  {"id":"orders_schema","name":"Verified order schema baseline","table":"Orders","schema_name":"dbo","kind":"schema","expected_schema":{"OrderID":"integer!","CustomerID":"integer!","SalesRepID":"integer!","OrderDate":"datetime!","OrderStatus":"text!"}},
+  {"id":"orders_volume","name":"Order volume change percent","table":"Orders","schema_name":"dbo","kind":"anomaly","maximum":30,"severity":"warning"}
+]

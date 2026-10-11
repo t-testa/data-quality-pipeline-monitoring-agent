@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "data-quality-pipeline-monitoring-agent"
+version = "0.1.0"
+requires-python = ">=3.11,<3.14"
+description = "Evidence-grounded data quality and pipeline monitoring"
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.in"]}
+
+[tool.setuptools.packages.find]
+include = ["dqagent*"]
+
+[tool.setuptools.package-data]
+dqagent = ["static/*", "rules/*.json"]
+
+[project.scripts]
+dqagent = "dqagent.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["sqlserver: requires an explicitly configured read-only SQL Server connection"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"dqagent/api.py" = ["B008"]
