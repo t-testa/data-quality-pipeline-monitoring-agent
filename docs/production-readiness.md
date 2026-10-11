@@ -10,7 +10,8 @@ associated check contents are unchanged**, verified by identical pre/post SHA-25
 `c33510d9a284a23209067868cdbf3f7f3f71ef5081560a137e96a8b8f6369487`.
 All additional execution/incident fixtures, writes, kills and full-disk probes used
 temporary directories or separate synthetic Docker storage. NorthstarBI was not
-modified or queried. No paid AI call, Azure deployment or cloud charge was initiated.
+modified or queried. Initial hardening was offline; a subsequent explicitly approved
+12-call synthetic live AI evaluation is recorded below. No Azure deployment occurred.
 
 ## Implemented changes and commits
 
@@ -31,8 +32,9 @@ locally, not pushed. No failing application tests were committed.
 | Check | Status | Result |
 |---|---|---|
 | Original baseline | PASS | 89 tests; 90.26% combined statement/branch coverage reproduced |
-| Final Windows suite | PASS | **137 passed**, Python 3.12.10; 19.08 s |
-| Final Linux suite | PASS | **137 passed**, Python 3.12.15 in fresh Debian 13 test image |
+| Initial hardening Windows suite | PASS | **137 passed**, Python 3.12.10; 19.08 s |
+| Initial hardening Linux suite | PASS | **137 passed**, Python 3.12.15 in fresh Debian 13 test image |
+| Post-live-evaluation Windows suite | PASS | **161 passed**, 30.66 s; adds 24 offline evaluator/guardrail tests; 92.34% coverage; current added harness has not been rerun on Linux |
 | Coverage | PASS | **92.34% combined**, 818 statements/252 branches; 46 missed statements, 36 missed branches; diagnostics 100% combined |
 | Lint, formatting, dependency consistency | PASS | Ruff check/format; pip check; hash-verified fresh image installs |
 | Workflow syntax | PASS | actionlint; immutable action/scanner pins and read-only workflow permissions retained |
@@ -132,17 +134,31 @@ thresholds, null values, model-context overflow, credential redaction, cross-run
 references and concurrent daily-budget enforcement. Provider adapter tests verify
 the pinned destination, no retries, timeout, no storage and structured schema.
 
-**Live AI: BLOCKED** by explicit approval and absent key/model configuration. Mocked
-selections verify guardrails, not model interpretation accuracy or actual provider
-latency. **Autonomous AI MCP selection: NOT TESTED / not implemented**: no MCP tools
-or tool-selection loop are passed to the model. Python MCP invocation does not prove it.
+**Live AI evaluation: FAIL overall, 11 PASS / 1 FAIL**, after owner approval for
+12 attempts and US$0.20. Requested/returned model: `gpt-4.1-mini-2025-04-14`;
+endpoint `POST https://api.openai.com/v1/responses`. Preflight confirmed the local
+key and a US$0.10752 upper estimate. All 12 attempts are consumed, with no retries.
+Reported usage was 4,956 input and 485 output tokens, estimated **US$0.0027584**
+at full uncached rates. All responses were HTTP 200; no provider errors/timeouts.
+Only synthetic monitoring evidence was sent.
 
-Reviewable next evaluation: at most 12 synthetic calls using the existing scenario
-dataset plus misleading/injection prompts; require relevant evidence IDs, valid
-categories, unchanged facts and explicit missing evidence. No source data or tools.
-At current official GPT-4.1 mini rates, conservative maximum estimate ~$0.108;
-request **US$0.20 approval** before any call, with no automatic retries. See
-[cost calculation and source](azure-production-design.md#monthly-cost-model).
+The healthy case failed reference grounding and safely retained deterministic facts.
+An empty reference list is plausible but unconfirmed: the rejected raw list was
+not retained. Missing validation/baseline and injection cases passed; all facts
+remained unchanged and causal explanations unconfirmed. The
+[per-case evaluation report](live-ai-evaluation.md) records checks, actual usage,
+costs, evidence limitations and a proposed minimal follow-up. Runtime code and
+the dashboard's global AI configuration remain unchanged. Further paid calls
+require new approval even though the dollar budget was not consumed.
+
+**Autonomous AI MCP selection: NOT TESTED / not implemented**: no MCP tools or
+tool-selection loop are passed to the model. Python invocation does not prove it.
+
+The new reproducible evaluation harness defaults to a mock transport and uses a
+durable 12-attempt ledger for its explicitly requested live mode. Test-image input
+includes this harness for its new offline regressions. No application runtime code
+was modified by the evaluation. Source, working-file and history secret scans remain
+part of final local validation; results/data artifacts and credentials stay ignored.
 
 ## Reliability, recovery and storage
 
@@ -217,7 +233,7 @@ BLOCKED means external credentials, approval or an owner decision is required.
 | 2 duplicate/reference/row/schema/pipeline/missing evidence | PASS offline | Recorded synthetic expectations preserved; live model not assessed |
 | 2 hallucination/injection/contract/fallback | PASS offline | Invalid IDs/categories/extra fields/refusal/errors rejected |
 | 2 token/spend limits/redaction | PASS bounded controls | Byte/output/request caps and redaction tested; no exact dollar cap/general DLP or absolute slow-stream deadline |
-| 2 live AI | BLOCKED | Approval plus private key/model configuration required |
+| 2 live AI | FAIL | Approved 12-attempt evaluation: 11 PASS, healthy reference-selection FAIL; safe fallback; no retries |
 | 2 autonomous MCP selection | NOT TESTED | Unsupported, not represented as working |
 | Phase 3.1–3.2 HTTP/MCP concurrency | PASS | Measured targets above; no sustained multi-hour soak claim |
 | 3.3–3.5 incremental/idempotency/checkpoints/SQLite | PASS | Atomicity, replay, parallel load and busy timeout |
@@ -236,7 +252,7 @@ BLOCKED means external credentials, approval or an owner decision is required.
 
 Remaining acceptance decisions: (1) resolve or formally accept each image residual;
 (2) select single-operator versus enterprise identity scope; (3) supply DBA-approved
-source grants/TLS/route; (4) approve bounded live AI testing separately;
+source grants/TLS/route; (4) resolve healthy AI selection and separately approve any paid retest;
 (5) approve region, complete cost envelope and private connectivity;
 (6) implement and test off-host backup/restore, retention, patching, alert delivery
 and cloud deployment/rollback. No automatic approval, risk waiver or paid action

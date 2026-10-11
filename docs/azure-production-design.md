@@ -1,7 +1,7 @@
 # Azure production design and complete planning estimate
 
 Review date: 2026-10-11. **Design only; deployment BLOCKED.** No Azure resource,
-paid model call, public application endpoint or infrastructure change was made.
+public application endpoint or infrastructure change was made.
 The private GitHub repository is not an application network boundary.
 
 ## Recommended topology and release conditions
@@ -143,7 +143,10 @@ For 12 synthetic live evaluation calls, budget conservatively 20,000 input token
 (bounded input plus instruction/schema allowance) and 600 output tokens each:
 12 x (20,000 x 0.40/M + 600 x 1.60/M) = **$0.10752**. Request approval for a
 **US$0.20 maximum evaluation budget**, no retries, no tools and no real source rows.
-No model is enabled or live-tested yet. At 20 maximum-sized calls/day for 30 days,
+The owner subsequently approved that evaluation: all 12 calls completed, with
+11 PASS / 1 FAIL and estimated cost US$0.0027584. See the
+[live evaluation report](live-ai-evaluation.md). The approval is exhausted and
+dashboard AI remains disabled. At 20 maximum-sized calls/day for 30 days,
 the same estimate is ~$5.38/month, separately billed from Azure. Model/provider
 account availability and actual token usage remain unverified. The application's
 request/byte/output limits are not a cross-provider dollar spending cap.

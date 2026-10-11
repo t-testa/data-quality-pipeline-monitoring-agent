@@ -11,5 +11,6 @@
 !Dockerfile.test
 !scripts/
 !scripts/backup.py
+!scripts/live_ai_evaluation.py
 dqagent/**/__pycache__/
 **/__pycache__/
