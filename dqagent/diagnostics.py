@@ -1,6 +1,7 @@
 """The LLM selects validated references; it cannot author facts or execute tools."""
 
 import json
+import math
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -25,7 +26,7 @@ GUIDANCE = {
         "Compare source and target counts and review extraction filters.",
     ),
     "freshness": (
-        "The recorded data age violates its contract.",
+        "The freshness check failed; a timestamp may be missing or outside its allowed age.",
         "Check the upstream schedule, timestamp semantics and timezone.",
     ),
     "numeric_range": (
@@ -45,8 +46,12 @@ GUIDANCE = {
         "Review the business definition and relevant field mappings.",
     ),
     "anomaly": (
-        "Volume differs from the prior completed baseline, or a baseline is missing.",
-        "Compare extraction windows and filters; establish a representative baseline.",
+        "Volume differs from the prior completed baseline; extraction windows or filters may have changed.",
+        "Compare the recorded baseline and observed count with extraction windows and filters.",
+    ),
+    "baseline_missing": (
+        "A volume comparison has no usable recorded baseline; its change cannot be interpreted.",
+        "Establish a representative completed baseline before interpreting volume change.",
     ),
     "pipeline": (
         "The loader recorded an execution error; its underlying cause is not confirmed.",
@@ -57,6 +62,47 @@ GUIDANCE = {
         "Verify read permissions, connectivity and the configured schema before interpreting the data.",
     ),
 }
+
+
+# Only applicable numeric contract fields and fixed operators are exposed. Never copy
+# arbitrary expected/details dictionaries, names, row text or exception messages.
+THRESHOLDS = {
+    "null": ("tolerance",),
+    "duplicate": ("tolerance",),
+    "reference": ("tolerance",),
+    "row_count": ("minimum", "maximum"),
+    "freshness": ("maximum",),
+    "numeric_range": ("minimum", "maximum", "tolerance"),
+    "schema": (),
+    "reconciliation": ("tolerance",),
+    "business_rule": ("tolerance",),
+    "anomaly": ("maximum",),
+}
+DETAILS = {
+    "anomaly": ("baseline", "row_count"),
+    "reconciliation": ("source_total", "comparison_total"),
+}
+CHECK_FIELDS = ("evidence_id", "run_id", "check_id", "kind", "status", "measured", "affected_records")
+
+
+def numeric_fields(values, keys):
+    return {
+        key: values[key]
+        for key in keys
+        if key in values
+        and (values[key] is None or (type(values[key]) in {int, float} and math.isfinite(values[key])))
+    }
+
+
+def check_fact(row):
+    expected = numeric_fields(row["expected"], THRESHOLDS[row["kind"]])
+    if row["kind"] == "business_rule" and row["expected"].get("operator") in ("le", "ge", "eq"):
+        expected["operator"] = row["expected"]["operator"]
+    return {
+        **{key: row[key] for key in CHECK_FIELDS},
+        "expected": expected,
+        "details": numeric_fields(row["details"], DETAILS.get(row["kind"], ())),
+    }
 
 
 class Selection(BaseModel):
@@ -74,6 +120,7 @@ class Selection(BaseModel):
             "reconciliation",
             "business_rule",
             "anomaly",
+            "baseline_missing",
             "pipeline",
             "check_error",
         ]
@@ -129,25 +176,42 @@ def diagnose(store, settings, question, model_call=ask_model):
             "records_processed": run["records_processed"],
             "retries": run["retries"],
             "started_at": run["started_at"],
+            "validation_status": "recorded" if rows else "not_recorded",
+            "recorded_check_count": len(rows),
+            "check_status_counts": {
+                status: sum(row["status"] == status for row in rows)
+                for status in ("pass", "warning", "failure", "error")
+            },
         }
     ]
-    # Only schema-controlled aggregates reach the model. No raw logs, row values or names.
-    problems = [
-        {
-            k: r[k]
-            for k in ("evidence_id", "run_id", "check_id", "kind", "status", "measured", "affected_records")
-        }
-        for r in rows
-        if r["status"] != "pass"
-    ]
-    facts.extend(problems)
+    checks = [check_fact(row) for row in rows]
+    problems = [check for check in checks if check["status"] != "pass"]
+    facts.extend(checks)
+    # The deterministic response includes all checks. The model sees only the run
+    # summary and non-passing, allowlisted facts, bounded by the 100-check tool limit.
+    model_facts = [facts[0], *problems]
 
     def category(problem):
-        return "check_error" if problem["status"] == "error" else problem["kind"]
+        if problem["status"] == "error":
+            return "check_error"
+        if problem["kind"] == "anomaly" and problem["details"].get("baseline") is None:
+            return "baseline_missing"
+        return problem["kind"]
 
     categories = {category(p) for p in problems}
     if run["error"]:
         categories.add("pipeline")
+    missing = []
+    if not rows:
+        missing.append(
+            "No validation results were recorded for this run; validation execution cannot be confirmed."
+        )
+    if "baseline_missing" in categories:
+        missing.append("A prior comparison baseline is unavailable for a recorded volume check.")
+    if "check_error" in categories:
+        missing.append("One or more checks could not execute; their data condition is unknown.")
+    if categories:
+        missing.append("Upstream job logs and causal evidence have not been collected")
     focus_ids = []
     priority_categories = []
     ai_status = (
@@ -162,10 +226,12 @@ def diagnose(store, settings, question, model_call=ask_model):
             try:
                 choice = Selection.model_validate(
                     model_call(
-                        settings, question.question, {"facts": facts, "allowed_guidance": sorted(categories)}
+                        settings,
+                        question.question,
+                        {"facts": model_facts, "allowed_guidance": sorted(categories)},
                     )
                 )
-                ids = {f["evidence_id"] for f in facts}
+                ids = {f["evidence_id"] for f in model_facts}
                 if (
                     not set(choice.evidence_ids) <= ids
                     or not set(choice.guidance) <= categories
@@ -201,5 +267,5 @@ def diagnose(store, settings, question, model_call=ask_model):
             for c in ordered_categories
         ],
         "recommended_steps": [GUIDANCE[c][1] for c in ordered_categories],
-        "missing_evidence": ["Upstream job logs and causal evidence have not been collected"],
+        "missing_evidence": missing,
     }

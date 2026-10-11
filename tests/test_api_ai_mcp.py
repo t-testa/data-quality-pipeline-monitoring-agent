@@ -47,7 +47,7 @@ def test_no_key_is_explicit_and_facts_are_real(store, settings):
     run = scenario_demo(store, "duplicates")
     result = diagnose(store, settings, Question(pipeline=run["pipeline"], question="why", use_ai=True))
     assert result["ai_status"].startswith("unavailable")
-    assert result["facts"][1]["measured"] == 1
+    assert next(f for f in result["facts"] if f.get("check_id") == "customer_key")["measured"] == 1
     assert not result["possible_explanations"][0]["confirmed_root_cause"]
 
 
