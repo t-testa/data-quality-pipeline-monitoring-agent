@@ -27,7 +27,9 @@ The fresh Docker acceptance harness uses its own random credentials, source-free
 
 Cross-platform verification caught inherited Docker `DQ_DATA_DIR` affecting a CLI test; all tests now explicitly clear deployment environment variables. Grounding review also added a regression test ensuring query execution errors describe an unknown data condition, not an asserted quality violation. The SQLite online backup completed and passed an integrity check. Container recreation preserved all 16 initial demo runs and the runtime UID was verified as 10001.
 
-Reproduce with README commands. JUnit and audit JSON are under ignored `artifacts/`; the summary is versioned while detailed local results remain private. Temporary test databases are isolated. `scripts/smoke_mcp.py` requires the API with demo data running. `Dockerfile.test` supports running the full suite in a disposable Linux container without giving tests access to host databases.
+Reproduce with README commands. JUnit and audit JSON are under ignored `artifacts/`; the summary is versioned while detailed local results remain private. Temporary test databases are isolated. Run `python -m scripts.smoke_mcp` from the repository root with the demo API running (direct script invocation does not put the repository package on Python's import path). `Dockerfile.test` supports running the full suite in a disposable Linux container without giving tests access to host databases.
+
+The main local demo service was updated to the final tested image. Its complete 16-run history remained identical; readiness, authenticated/unauthenticated HTTP and real MCP stdio smoke checks passed after the update. No unrelated container was changed. Acceptance containers were stopped; their isolated local volumes were retained as verification evidence.
 
 ## Outstanding acceptance boundaries
 
