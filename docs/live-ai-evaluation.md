@@ -2,7 +2,8 @@
 
 **11 PASS, 1 FAIL; 12/12 authorized attempts consumed.** No further paid calls
 are authorized. Production acceptance remains blocked. The failed case was not
-retried; application runtime code and provider prompting remain unchanged.
+retried. A subsequent offline contract/observability fix is documented below;
+it does not change these historical live results.
 
 ## Configuration and safeguards
 
@@ -90,26 +91,91 @@ test reproduces this fallback for an empty selection. The live artifact did not
 retain the rejected raw reference list, so empty versus unsupported references
 cannot be distinguished from saved evidence. The offline test is not a captured replay.
 
-Proposed follow-up, **not implemented**: explicitly require the run-summary reference
-even for healthy runs and add `min_length=1` to Selection.evidence_ids, matching
-the existing runtime requirement. Preserve grounding checks and fallback. Retain
-safe selection counts/accepted references for future investigations. Any paid
-retest requires a new call/budget approval; the unused dollar balance is not approval.
+## Offline investigation and fix — 2026-10-11
+
+The historical request was reconstructed through the installed SDK with a mock
+transport **before changing the code**. Its byte-level SHA-256 exactly matches
+the saved request hash:
+`afca5e1246450927d419bb21488ac0d048fa6160042c2d97c90e0619046a3f87`.
+It supplied one evidence ID, `fa60147a1cb14debb64e1a90e1b3accd`, belonging to the
+synthetic healthy run. The summary reports success, ten passes, zero warnings,
+failures or errors, and no allowed guidance. Passing check IDs were intentionally
+excluded from the model projection. A valid reference was therefore available.
+
+| Candidate cause | Finding |
+|---|---|
+| Malformed supplied reference generation | Not supported: the exact reconstructed request contains the correct, well-formed persisted run-summary ID |
+| Model reference behavior | The response's reference list was empty or contained an unsupported ID; which one remains unknown because the original rejected list was not retained |
+| Excessively strict grounding | No demonstrated need to relax it: citing the supplied summary is valid for a healthy run; nonexistent, cross-run or altered IDs must still fail |
+| Application contract defect | **Confirmed:** schema allowed `evidence_ids: []`, while runtime validation rejected it; the prompt did not explicitly specify a healthy-run reference or exact identifier copying |
+| Observability defect | **Confirmed:** the catch-all fallback discarded the rejection reason and reference representation |
+
+The contract mismatch explains a reproducible failure path, not the exact contents
+of the lost live response. An empty-list explanation remains a hypothesis. No
+historical response has been fabricated, no successful live retest is claimed,
+and the original 11/12 result remains unchanged.
+
+Implemented offline: `Selection.evidence_ids` now has `min_length=1`, and the prompt
+requires exact supplied IDs plus a run-summary citation for healthy/no-validation
+runs. OpenAI documents support for array `minItems` in
+[Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses).
+The validator still rejects missing/empty, nonexistent, altered and cross-run IDs,
+and guidance lacking applicable cited evidence. Deterministic facts and safe fallback
+are preserved. Mutated Selection instances from adapters are revalidated as well.
+
+Future failures return `ai_failure` and emit a correlated `ai_diagnostic_rejected`
+event. Fixed reasons distinguish schema/missing/empty/reference/guidance errors,
+provider timeout/error, no structured selection and unexpected local validation
+errors. Summaries include counts and up to 12 entries. Known references use
+supplied-context indices. Unknown references expose only capped length/format
+metadata and a truncated HMAC fingerprint of at most 256 characters, using an
+ephemeral process-local key. No arbitrary reference text, prompts, credentials,
+source content, headers or raw exception/validation messages are logged. Missing
+or unavailable values stay explicit; they are never reported as zero. Where an
+SDK schema failure does not expose the reference field, its summary is unavailable.
+
+New deterministic tests cover healthy exact references, empty/missing/wrong-type
+references, nonexistent IDs, whitespace/case changes, check-name substitution,
+passing-check IDs outside the projection, cross-run references, missing validation,
+guidance support, schema failures, safe logging, provider fallback and local defects.
+An existing flaky test searched for `999999` anywhere in serialized facts and
+matched a legitimate fractional freshness value. It now compares exact persisted
+facts; numeric assertions use numeric equality rather than substring matching.
+The offline test fixture explicitly blocks real OpenAI HTTP transport.
+
+A targeted live retest **is justified** after fresh approval: healthy, missing
+validation and duplicate-control cases would test real model compliance with the
+clarified prompt/schema while checking the stricter boundary. No additional paid
+calls were made or are authorized by this offline work. The unused dollar balance
+does not extend the exhausted 12-attempt approval.
 
 ## Reproducibility and limits
 
-Post-evaluation regression result: **161 passed, 92.34% combined statement/branch
+Historical post-evaluation regression result: **161 passed, 92.34% combined statement/branch
 coverage**, Windows Python 3.12.10, 30.66 seconds. This includes 24 new offline
 tests for all planned cases, durable/concurrent attempt limits, insufficient budget,
 missing keys, model mismatch, provider failures, credential exclusion and healthy
 empty-selection fallback. Ruff check/format passed. The existing upstream
 Starlette/AnyIO deprecation warning remains. No new Linux or hosted CI run is claimed.
 
+After the offline reference fix: **188 passed, 92.94% combined statement/branch
+coverage**, Windows Python 3.12.10, 26.91 seconds. The diagnostics module has
+**100% statement and branch coverage**. All 27 added rejection/contract tests
+passed. Ruff check/format passed. The same upstream deprecation warning remains.
+Dependency consistency, known-secret scans and redacted Gitleaks scans of all
+publishable files and reachable history passed. No dependency or container changes
+were made; the existing image vulnerability findings remain unresolved and unaccepted.
+No paid API calls were made. Reproduce the full offline suite with:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q --cov=dqagent --cov-branch --cov-fail-under=80 --cov-report=term --cov-report=json:artifacts/healthy-reference-coverage.json --junitxml=artifacts/healthy-reference-tests.xml
+```
+
 The default command is offline, using a mock HTTP transport and placeholder key:
 
 ```powershell
 .\.venv\Scripts\python.exe -m scripts.live_ai_evaluation
-.\.venv\Scripts\python.exe -m pytest -q tests/test_live_ai_evaluation.py tests/test_ai_evaluation.py tests/test_hardening.py
+.\.venv\Scripts\python.exe -m pytest -q tests/test_diagnostic_rejections.py tests/test_live_ai_evaluation.py tests/test_ai_evaluation.py tests/test_hardening.py
 ```
 
 The authorized execution used `python -m scripts.live_ai_evaluation --live` from
@@ -121,8 +187,18 @@ costs. `artifacts/live-ai-offline-preflight.json` records preparation; regressio
 results are in `artifacts/live-ai-regressions.xml` and `artifacts/live-ai-coverage.json`.
 No credentials, real business records or raw provider headers/errors are retained.
 
+Investigation artifact: `artifacts/healthy-reference-investigation.json` records
+the exact historical request reconstruction and old schema; the original live
+evaluation artifact's SHA-256 remains
+`488c45a198c80c5e86f44ce52853d3781bdaf564283d5b417af6317da0a6826c`;
+the read-only ledger check still reports exactly 12 attempts. The original artifacts
+and ledger were not rewritten. Offline-fix results are in
+`artifacts/healthy-reference-tests.xml`, `artifacts/healthy-reference-coverage.json`
+and `artifacts/healthy-reference-gitleaks-{files,history}.json`.
+
 This bounded sample does not prove general model reliability, every injection
 defense, actual provider outage behavior or autonomous MCP selection. Provider
 errors, refusals, invalid contracts and timeouts remain offline-tested. Existing
 image vulnerabilities are unresolved and unaccepted. No Azure resources,
-NorthstarBI data, existing monitoring history or application runtime code changed.
+NorthstarBI data or existing monitoring history changed. The offline application
+fix has not been rolled out to the running dashboard or retested with a paid model.

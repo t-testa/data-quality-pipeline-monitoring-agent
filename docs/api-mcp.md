@@ -26,6 +26,25 @@ The run summary reports `validation_status`, `recorded_check_count` and counts b
 
 The optional model sees only the run summary and non-passing check projections, bounded by the existing 100-check/256-KiB evidence-tool limits and 1,000-character question limit. It receives no raw expected/details dictionaries, row text, check names, logs or connection strings. Returned references must belong to that supplied context, and guidance must match the selected problem. Model selection never suppresses deterministic facts. Passing-check IDs remain in the user response but are not eligible model references because they are not sent to the model.
 
+The output schema requires at least one evidence reference. The prompt explicitly
+requires exact supplied `evidence_id` values and a run-summary reference for healthy
+or validation-missing runs; guidance stays empty when no categories are allowed.
+Whitespace, case changes, check names, nonexistent IDs and references from another
+run are rejected rather than normalized or guessed.
+
+On a failed AI attempt, `ai_failure` contains a fixed reason code and a bounded
+reference summary; otherwise it is null. The existing `ai_status` fallback and
+deterministic evidence remain unchanged. The server also emits an
+`ai_diagnostic_rejected` JSON log event correlated by run ID. Reference summaries
+distinguish missing, empty, wrong-type and unavailable values; unavailable counts
+are null. Supplied references are represented by their position in the projected
+facts. Unknown strings receive only format/length metadata and an opaque keyed
+fingerprint, never the original string. At most 12 entries are retained, with at
+most 256 characters processed per unknown value. Fingerprints correlate within
+one process only and cannot reconstruct a missing historical model response.
+The dashboard still displays the existing status/evidence sections; this additional
+metadata is available to API clients and operators through logs.
+
 An additional 16 KiB bound applies to serialized question plus projected evidence
 before reserving a paid attempt. Oversized contexts skip AI and retain all
 deterministic facts. Questions undergo credential-pattern/known-secret redaction;

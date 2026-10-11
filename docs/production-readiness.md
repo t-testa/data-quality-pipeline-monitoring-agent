@@ -35,7 +35,8 @@ locally, not pushed. No failing application tests were committed.
 | Initial hardening Windows suite | PASS | **137 passed**, Python 3.12.10; 19.08 s |
 | Initial hardening Linux suite | PASS | **137 passed**, Python 3.12.15 in fresh Debian 13 test image |
 | Post-live-evaluation Windows suite | PASS | **161 passed**, 30.66 s; adds 24 offline evaluator/guardrail tests; 92.34% coverage; current added harness has not been rerun on Linux |
-| Coverage | PASS | **92.34% combined**, 818 statements/252 branches; 46 missed statements, 36 missed branches; diagnostics 100% combined |
+| Post-offline-reference-fix Windows suite | PASS | **188 passed**, 26.91 s; adds 27 deterministic reference/observability regressions; no paid calls; this revision has not been rerun on Linux |
+| Current coverage | PASS | **92.94% combined**, 888 statements/274 branches; 46 missed statements, 36 missed branches; diagnostics 100% combined |
 | Lint, formatting, dependency consistency | PASS | Ruff check/format; pip check; hash-verified fresh image installs |
 | Workflow syntax | PASS | actionlint; immutable action/scanner pins and read-only workflow permissions retained |
 | Bicep | PASS | VM/budget compile; compiled VM has no public IP, SSH-key authentication, managed identity and detached-on-delete data disk |
@@ -144,11 +145,16 @@ Only synthetic monitoring evidence was sent.
 
 The healthy case failed reference grounding and safely retained deterministic facts.
 An empty reference list is plausible but unconfirmed: the rejected raw list was
-not retained. Missing validation/baseline and injection cases passed; all facts
+not retained. Subsequent offline investigation reproduced the exact request hash
+and confirmed a schema/runtime mismatch: the schema allowed an empty ID list while
+the validator rejected it. The schema and prompt now require a nonempty exact
+reference, and failures expose bounded sanitized reasons/reference profiles.
+Grounding has not been relaxed; no new live call or successful retest is claimed.
+Missing validation/baseline and injection cases passed; all facts
 remained unchanged and causal explanations unconfirmed. The
 [per-case evaluation report](live-ai-evaluation.md) records checks, actual usage,
-costs, evidence limitations and a proposed minimal follow-up. Runtime code and
-the dashboard's global AI configuration remain unchanged. Further paid calls
+costs, evidence limitations and the offline fix. The running dashboard and its
+global AI configuration remain unchanged. Further paid calls
 require new approval even though the dollar budget was not consumed.
 
 **Autonomous AI MCP selection: NOT TESTED / not implemented**: no MCP tools or
@@ -156,8 +162,9 @@ tool-selection loop are passed to the model. Python invocation does not prove it
 
 The new reproducible evaluation harness defaults to a mock transport and uses a
 durable 12-attempt ledger for its explicitly requested live mode. Test-image input
-includes this harness for its new offline regressions. No application runtime code
-was modified by the evaluation. Source, working-file and history secret scans remain
+includes this harness for its new offline regressions. The evaluation itself did not
+modify runtime code; the subsequent offline reference fix changes the local diagnostic
+adapter, schema, prompt and safe rejection reporting. Source, working-file and history secret scans remain
 part of final local validation; results/data artifacts and credentials stay ignored.
 
 ## Reliability, recovery and storage
@@ -252,7 +259,7 @@ BLOCKED means external credentials, approval or an owner decision is required.
 
 Remaining acceptance decisions: (1) resolve or formally accept each image residual;
 (2) select single-operator versus enterprise identity scope; (3) supply DBA-approved
-source grants/TLS/route; (4) resolve healthy AI selection and separately approve any paid retest;
+source grants/TLS/route; (4) validate the offline healthy-selection fix with a separately approved paid retest;
 (5) approve region, complete cost envelope and private connectivity;
 (6) implement and test off-host backup/restore, retention, patching, alert delivery
 and cloud deployment/rollback. No automatic approval, risk waiver or paid action

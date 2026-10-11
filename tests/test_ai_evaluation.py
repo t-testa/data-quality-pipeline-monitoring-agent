@@ -80,7 +80,7 @@ def test_offline_ai_evaluation(case, store, settings):
     assert result["facts"] == baseline["facts"]
     assert all(not h["confirmed_root_cause"] for h in result["possible_explanations"])
     assert "PRIVATE" not in json.dumps(result)
-    assert "999999" not in json.dumps(result)
+    assert all(f.get("measured") != 999999 and f.get("records_processed") != 999999 for f in result["facts"])
     if case.get("measured") is not None:
         assert (
             next(f for f in result["facts"] if f.get("check_id") == case["check"])["measured"]

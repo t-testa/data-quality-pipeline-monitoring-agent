@@ -32,6 +32,7 @@ def test_model_cannot_hide_findings(store, settings):
 )
 def test_recorded_failures_without_key_never_call_provider(store, settings, scenario):
     run = scenario_demo(store, scenario)
+    baseline = diagnose(store, settings, Question(pipeline=run["pipeline"], run_id=run["id"], question="why"))
 
     def forbidden(*_):
         pytest.fail("No-key path attempted provider access")
@@ -52,7 +53,10 @@ def test_recorded_failures_without_key_never_call_provider(store, settings, scen
     assert result["facts"][0]["run_id"] == run["id"]
     assert result["possible_explanations"]
     assert all(not item["confirmed_root_cause"] for item in result["possible_explanations"])
-    assert "999999" not in str(result)
+    # Exact facts detect invented measurements without matching harmless digits
+    # inside UUIDs, timestamps or a legitimate floating-point freshness value.
+    assert result["facts"] == baseline["facts"]
+    assert result["possible_explanations"] == baseline["possible_explanations"]
 
 
 def test_cross_run_reference_and_provider_exception_fall_back(store, settings):
