@@ -52,6 +52,10 @@ GUIDANCE = {
         "The loader recorded an execution error; its underlying cause is not confirmed.",
         "Inspect local operator logs, connectivity and transaction state before retrying.",
     ),
+    "check_error": (
+        "A quality check could not execute; the data condition is unknown.",
+        "Verify read permissions, connectivity and the configured schema before interpreting the data.",
+    ),
 }
 
 
@@ -71,6 +75,7 @@ class Selection(BaseModel):
             "business_rule",
             "anomaly",
             "pipeline",
+            "check_error",
         ]
     ] = Field(max_length=10)
 
@@ -136,7 +141,11 @@ def diagnose(store, settings, question, model_call=ask_model):
         if r["status"] != "pass"
     ]
     facts.extend(problems)
-    categories = {p["kind"] for p in problems}
+
+    def category(problem):
+        return "check_error" if problem["status"] == "error" else problem["kind"]
+
+    categories = {category(p) for p in problems}
     if run["error"]:
         categories.add("pipeline")
     selected, ai_status = (
@@ -163,7 +172,7 @@ def diagnose(store, settings, question, model_call=ask_model):
                 ):
                     raise ValueError("Unsupported model evidence")
                 selected = [f for f in facts if f["evidence_id"] in choice.evidence_ids]
-                supported = {p["kind"] for p in problems if p["evidence_id"] in choice.evidence_ids}
+                supported = {category(p) for p in problems if p["evidence_id"] in choice.evidence_ids}
                 if run["id"] in choice.evidence_ids and run["error"]:
                     supported.add("pipeline")
                 if not set(choice.guidance) <= supported:
@@ -182,7 +191,7 @@ def diagnose(store, settings, question, model_call=ask_model):
                 "category": c,
                 "text": GUIDANCE[c][0],
                 "confirmed_root_cause": False,
-                "evidence_ids": [p["evidence_id"] for p in problems if p["kind"] == c] or [run["id"]],
+                "evidence_ids": [p["evidence_id"] for p in problems if category(p) == c] or [run["id"]],
             }
             for c in sorted(categories)
         ],

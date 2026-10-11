@@ -1,9 +1,19 @@
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
 from dqagent.api import create_app
 from dqagent.settings import Settings
 from dqagent.store import Store
+
+
+@pytest.fixture(autouse=True)
+def isolate_environment(monkeypatch):
+    # Never inherit deployment paths or credentials in tests (including Docker ENV).
+    for key in list(os.environ):
+        if key.startswith("DQ_"):
+            monkeypatch.delenv(key)
 
 
 @pytest.fixture

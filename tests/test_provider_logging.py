@@ -32,3 +32,32 @@ def test_log_redaction():
     assert "secret-value" not in record.getMessage()
     assert "hunter2" not in record.getMessage()
     assert "custom-secret" not in record.getMessage()
+
+
+def test_failed_query_does_not_imply_bad_data(store, settings):
+    from dqagent.contracts import Question, Result
+    from dqagent.diagnostics import diagnose
+    from dqagent.quality import utcnow
+
+    run = store.start("unreachable-source", "test")
+    store.finish(
+        run,
+        [
+            Result(
+                check_id="fresh",
+                name="Freshness",
+                table="x",
+                kind="freshness",
+                executed_at=utcnow(),
+                status="error",
+                measured=None,
+                expected={},
+                details={},
+                duration_ms=1,
+            )
+        ],
+    )
+    response = diagnose(store, settings, Question(pipeline="unreachable-source", question="Is it stale?"))
+    explanation = response["possible_explanations"][0]
+    assert explanation["category"] == "check_error"
+    assert "unknown" in explanation["text"]
