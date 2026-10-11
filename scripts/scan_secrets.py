@@ -1,9 +1,13 @@
 """Fail on accidentally tracked runtime files or recognizable credentials; print paths only."""
 
+import argparse
 import re
 import subprocess
 from pathlib import Path
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--history", action="store_true")
+args = parser.parse_args()
 paths = subprocess.check_output(["git", "ls-files", "-z"]).decode().split("\0")
 bad = []
 known_secrets = []
@@ -27,6 +31,23 @@ for path in filter(None, paths):
             value in content for value in known_secrets
         ):
             bad.append(path)
+if args.history:
+    objects = subprocess.check_output(["git", "rev-list", "--objects", "--all"]).decode().splitlines()
+    for entry in objects:
+        oid, _, path = entry.partition(" ")
+        if subprocess.check_output(["git", "cat-file", "-t", oid]).strip() != b"blob":
+            continue
+        if path.startswith(("data/", ".local/", ".venv/", "artifacts/")) or Path(path).name == ".env":
+            bad.append("history:" + path)
+        content = subprocess.check_output(["git", "cat-file", "blob", oid]).decode("utf-8", errors="ignore")
+        if any(re.search(pattern, content) for pattern in patterns) or any(
+            value in content for value in known_secrets
+        ):
+            bad.append("history:" + path)
 if bad:
     raise SystemExit("Potential secret/runtime files: " + ", ".join(sorted(set(bad))))
-print("Tracked-file secret check passed (heuristic; complements manual review).")
+print(
+    "Tracked-file"
+    + (" and full reachable history" if args.history else "")
+    + " secret check passed (heuristic; complements manual review)."
+)

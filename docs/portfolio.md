@@ -38,3 +38,7 @@ Business value: make broken reporting inputs visible before analysts spend hours
 - Why SQLite is appropriate locally and why multi-replica Container Apps needs a different metadata backend.
 - How model-reference validation, no raw logs, and curated guidance constrain prompt injection and hallucination.
 - Remaining growth: per-user Entra access, external scheduler adapters, alert delivery, retention, server metadata storage and historical intent parsing.
+
+## Acceptance review contribution
+
+The final review went beyond statement coverage: it tested concurrent budgets and pipeline locks, proved that model selection cannot suppress findings, exercised hostile questions and source strings, and compared complete persisted run evidence across container restart and recreation. It also separated Python dependency audits from OS image scanning and distinguished local workflow validation from an actual hosted CI run. See the [acceptance report](acceptance.md) for verified results and unresolved production gates; do not present a clean dependency audit as proof that the full system is vulnerability-free.

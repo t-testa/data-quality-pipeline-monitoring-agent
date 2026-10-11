@@ -148,11 +148,12 @@ def diagnose(store, settings, question, model_call=ask_model):
     categories = {category(p) for p in problems}
     if run["error"]:
         categories.add("pipeline")
-    selected, ai_status = (
-        facts,
+    focus_ids = []
+    priority_categories = []
+    ai_status = (
         "unavailable: no configured API key/model"
         if not settings.openai_api_key.get_secret_value() or not settings.openai_model
-        else "not requested",
+        else "not requested"
     )
     if question.use_ai and settings.openai_api_key.get_secret_value() and settings.openai_model:
         if not store.reserve_ai():
@@ -171,21 +172,25 @@ def diagnose(store, settings, question, model_call=ask_model):
                     or not choice.evidence_ids
                 ):
                     raise ValueError("Unsupported model evidence")
-                selected = [f for f in facts if f["evidence_id"] in choice.evidence_ids]
                 supported = {category(p) for p in problems if p["evidence_id"] in choice.evidence_ids}
                 if run["id"] in choice.evidence_ids and run["error"]:
                     supported.add("pipeline")
                 if not set(choice.guidance) <= supported:
                     raise ValueError("Guidance must cite applicable evidence")
-                categories, ai_status = set(choice.guidance), "available: evidence selection verified"
+                focus_ids = list(dict.fromkeys(choice.evidence_ids))
+                priority_categories = list(dict.fromkeys(choice.guidance))
+                ai_status = "available: evidence selection verified"
             except Exception:
                 ai_status = "unavailable: provider or grounding validation failed"
-                selected = facts
+                focus_ids, priority_categories = [], []
+    ordered_categories = priority_categories + sorted(categories - set(priority_categories))
     return {
         "ai_status": ai_status,
         "run_id": run["id"],
         "scope": "Explicit run or latest recorded run; natural-language dates are not interpreted",
-        "facts": selected,
+        # A model may prioritize evidence; it must never suppress recorded findings.
+        "facts": facts,
+        "focus_evidence_ids": focus_ids,
         "possible_explanations": [
             {
                 "category": c,
@@ -193,8 +198,8 @@ def diagnose(store, settings, question, model_call=ask_model):
                 "confirmed_root_cause": False,
                 "evidence_ids": [p["evidence_id"] for p in problems if category(p) == c] or [run["id"]],
             }
-            for c in sorted(categories)
+            for c in ordered_categories
         ],
-        "recommended_steps": [GUIDANCE[c][1] for c in sorted(categories)],
+        "recommended_steps": [GUIDANCE[c][1] for c in ordered_categories],
         "missing_evidence": ["Upstream job logs and causal evidence have not been collected"],
     }

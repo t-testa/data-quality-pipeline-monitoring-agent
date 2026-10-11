@@ -1,6 +1,7 @@
 *
 !Dockerfile
 !requirements.lock
+!requirements-toolchain.lock
 !dqagent/
 !dqagent/**
 !requirements-dev.lock

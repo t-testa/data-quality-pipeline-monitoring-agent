@@ -19,6 +19,8 @@ class Store:
         root.mkdir(parents=True, exist_ok=True)
         self.path = root / "monitoring.sqlite"
         with self.db() as db:
+            if db.execute("PRAGMA user_version").fetchone()[0] not in {0, 1}:
+                raise ValueError("Unsupported metadata schema version; do not downgrade this database")
             db.executescript("""
             PRAGMA journal_mode=WAL;
             CREATE TABLE IF NOT EXISTS runs (

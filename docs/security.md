@@ -10,13 +10,13 @@ The source integration accepts only explicit encrypted `mssql+pyodbc` URLs. Sour
 
 Two distinct random bearer secrets, each at least 32 characters, are required before API startup. The read token can inspect evidence and request deterministic diagnostics. The diagnostic token may also trigger optional paid OpenAI requests. Both roles see all monitoring data in this single-workspace application; there is no multi-tenant isolation. Tokens are compared in constant time and never stored by the browser. Restart with new environment secrets to rotate them.
 
-Public routes contain only static dashboard assets and a liveness response. Every monitoring endpoint, schema endpoint and tool call requires a token. No permissive CORS is enabled. Browser rendering uses textContent, never source-data HTML. Content Security Policy blocks third-party scripts and framing. HTTP is permitted only on loopback or inside an encrypted SSH tunnel. The Azure design publishes no application port on the VNet and uses SSH keys plus an approved private access route.
+Public routes contain only static dashboard assets and minimal liveness/readiness responses. Readiness verifies metadata access without returning records or error details. Every monitoring endpoint, schema endpoint and tool call requires a token. No permissive CORS is enabled. Browser rendering uses textContent, never source-data HTML. Content Security Policy blocks third-party scripts and framing. HTTP is permitted only on loopback or inside an encrypted SSH tunnel. The Azure design publishes no application port on the VNet and uses SSH keys plus an approved private access route.
 
 MCP is stdio-only and proxies authenticated requests to FastAPI. It has no direct source or metadata access and does not start an HTTP server. The OS account and client configuration must be trusted. Use the read token for MCP. Remote API URLs must use HTTPS; HTTP is limited to localhost. Redirects and environment proxy inheritance are disabled.
 
 ## Operational limits
 
-- 8 KiB HTTP request bodies, including chunked requests; strict typed inputs and 1,000-character questions.
+- 8 KiB HTTP request bodies, including chunked requests, with a ten-second receive deadline; strict typed inputs and 1,000-character questions.
 - 120 authenticated requests/minute per role in one API process; one worker is required.
 - 20 attempted AI requests/day, persisted atomically in SQLite; one provider call, no SDK retries, 20-second timeout, 600 output tokens. This is a request cap, not an exact dollar cap.
 - MCP/evidence: up to 100 results and 256 KiB. Queries have five-second connection and ten-second statement timeouts; two SQL connections maximum.
@@ -27,4 +27,6 @@ MCP is stdio-only and proxies authenticated requests to FastAPI. It has no direc
 
 ## Remaining hardening
 
-This is a private, single-operator service, not a public SaaS. Before wider organizational use: add individual Entra identities and audit trails, centrally managed secret rotation, authenticated TLS termination, retention/alert delivery, a server database, bounded multi-tenant authorization, image scanning and scheduled dependency updates. No automatic recovery is attempted if a process dies during a pipeline; use explicit operator recovery. Keep backups on an encrypted private destination and test restoration.
+This is a private, single-operator service, not a public SaaS. Before wider organizational use: add individual Entra identities and audit trails, centrally managed secret rotation, authenticated TLS termination, retention/alert delivery, a server database, bounded multi-tenant authorization and scheduled dependency updates. Image scanning is now performed locally and configured in CI; remaining OS advisories require documented applicability review before production. The CI image gate rejects fixable high/critical findings; it does not certify unfixed findings as safe. No automatic recovery is attempted if a process dies during a pipeline; use explicit operator recovery. Keep backups on an encrypted private destination and test restoration.
+
+The runtime base is pinned by digest, uses Debian 13 security updates and excludes pip/ensurepip after hash-verified dependency installation. Test dependencies are installed only in the separate test image. A pinned base does not freeze apt repositories or vulnerability databases; rescan every final image and retain its identity. Model prioritization never removes persisted findings from a diagnostic response.

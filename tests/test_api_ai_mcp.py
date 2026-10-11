@@ -96,7 +96,7 @@ def test_injection_never_controls_facts_or_actions(store, settings):
         ),
         model,
     )
-    assert result["facts"][0]["measured"] == 1
+    assert next(f for f in result["facts"] if f.get("check_id") == "customer_key")["measured"] == 1
     assert all(f.get("measured") != 999 for f in result["facts"])
     assert all("999" not in item["text"] for item in result["possible_explanations"])
     assert result["ai_status"].startswith("available")

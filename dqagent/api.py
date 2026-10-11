@@ -1,4 +1,6 @@
+import asyncio
 import secrets
+import sqlite3
 import threading
 import time
 from pathlib import Path
@@ -21,20 +23,26 @@ class RequestBounds:
     def __init__(self, app):
         self.app = app
 
+    body_timeout = 10
+
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
-        chunks, size = [], 0
-        while True:
-            message = await receive()
-            if message["type"] == "http.disconnect":
-                return
-            size += len(message.get("body", b""))
-            if size > 8192:
-                return await JSONResponse({"detail": "Request too large"}, 413)(scope, receive, send)
-            chunks.append(message)
-            if not message.get("more_body", False):
-                break
+        body = bytearray()
+        try:
+            async with asyncio.timeout(self.body_timeout):
+                while True:
+                    message = await receive()
+                    if message["type"] == "http.disconnect":
+                        return
+                    body.extend(message.get("body", b""))
+                    if len(body) > 8192:
+                        return await JSONResponse({"detail": "Request too large"}, 413)(scope, receive, send)
+                    if not message.get("more_body", False):
+                        break
+        except TimeoutError:
+            return await JSONResponse({"detail": "Request body timeout"}, 408)(scope, receive, send)
+        chunks = [{"type": "http.request", "body": bytes(body), "more_body": False}]
         index = 0
 
         async def replay():
@@ -66,10 +74,10 @@ def create_app(settings=None):
     lock, calls = threading.Lock(), {"read": [], "diagnose": []}
 
     def principal(credentials: HTTPAuthorizationCredentials | None = Depends(auth)):
-        token = credentials.credentials if credentials else ""
-        if secrets.compare_digest(token, settings.diagnostic_token.get_secret_value()):
+        token = (credentials.credentials if credentials else "").encode("utf-8")
+        if secrets.compare_digest(token, settings.diagnostic_token.get_secret_value().encode("utf-8")):
             role = "diagnose"
-        elif secrets.compare_digest(token, settings.api_token.get_secret_value()):
+        elif secrets.compare_digest(token, settings.api_token.get_secret_value().encode("utf-8")):
             role = "read"
         else:
             raise HTTPException(401, "Authentication required", headers={"WWW-Authenticate": "Bearer"})
@@ -101,6 +109,15 @@ def create_app(settings=None):
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    @app.get("/ready")
+    def readiness():
+        try:
+            with store.db() as db:
+                db.execute("SELECT id FROM runs LIMIT 1").fetchone()
+            return {"status": "ready"}
+        except sqlite3.Error:
+            return JSONResponse({"status": "unavailable"}, 503)
 
     static = Path(__file__).parent / "static"
 

@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import secrets
 from pathlib import Path
 
@@ -26,7 +27,8 @@ def main():
     args = parser.parse_args()
     if args.command == "init":
         path = Path(".env")
-        with path.open("x", encoding="utf-8") as f:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as f:
             f.write(
                 f"DQ_API_TOKEN={secrets.token_urlsafe(32)}\nDQ_DIAGNOSTIC_TOKEN={secrets.token_urlsafe(32)}\nDQ_DATA_DIR=data\n"
             )

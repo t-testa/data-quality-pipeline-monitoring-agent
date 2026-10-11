@@ -48,19 +48,20 @@ class EvidenceTools:
             run = self.store.run(args.run_id)
             if not run or (args.pipeline and run["pipeline"] != args.pipeline):
                 raise ValueError("Run not found in requested scope")
-            results = self.store.results(args.run_id, args.limit)
+            # Rule sets are bounded to 100. Filter within that complete run before limiting.
+            results = self.store.results(args.run_id, 100)
             if name == "get_pipeline_run":
                 output = run
             elif name == "get_incident_details":
-                output = {"run": run, "results": results}
+                output = {"run": run, "results": results[: args.limit]}
             elif name == "get_data_freshness":
-                output = [r for r in results if r["kind"] == "freshness"]
+                output = [r for r in results if r["kind"] == "freshness"][: args.limit]
             elif name == "get_table_quality_summary":
                 if args.table is None:
                     raise ValueError("table required")
-                output = [r for r in results if r["table"] == args.table]
+                output = [r for r in results if r["table"] == args.table][: args.limit]
             else:
-                output = results
+                output = results[: args.limit]
         if len(json.dumps(output).encode()) > 262144:
             raise ValueError("Result too large; request a smaller limit")
         return {"data": output, "limit": args.limit, "bounded": True}

@@ -2,7 +2,7 @@
 
 **Northwatch** turns database quality contracts and pipeline execution records into inspectable evidence. It includes an incremental demo loader, ten configurable check types, persistent monitoring, a private dashboard, nine read-only MCP tools, and optional tightly grounded OpenAI diagnostics.
 
-Built as a separate project. NorthstarBI, its Power BI reports, and the SQL Intelligence Agent are not modified. Source repository is intended to remain private; no cloud deployment or public endpoint is created by setup.
+Built as a separate project. Existing source databases and reports are accessed read-only. Source repository is intended to remain private; no cloud deployment or public endpoint is created by setup. Screenshots and demonstrations use synthetic data.
 
 ## Quick start — Windows / Python 3.12
 
@@ -35,13 +35,13 @@ Container traffic binds only to `127.0.0.1:8765`. The non-root container persist
 ```
 Choose `success`, `duplicates`, `missing_reference`, `nulls`, `row_decline`, `stale`, `pipeline_failure`, `schema_change`, or `all`. Each pipeline seeds a separate synthetic database, records a baseline, injects one idempotent incident, and records its result. Reruns retain history and do not overwrite existing source systems. The first baseline run warns because volume comparison needs prior evidence. A later healthy run passes all ten checks.
 
-## NorthstarBI
+## SQL Server source adapter
 
-Read-only discovery verified the schema and executed ten checks. Routine source monitoring requires a DBA-provisioned SELECT-only principal; the CLI rejects privileged identities. Configure an encrypted SQLAlchemy `mssql+pyodbc` URL in `DQ_SOURCE_URL`, then:
+Routine source monitoring requires a DBA-provisioned SELECT-only principal; the CLI rejects privileged identities. Configure an encrypted SQLAlchemy `mssql+pyodbc` URL in `DQ_SOURCE_URL` and a reviewed rules file. The included sample contract can be invoked with:
 ```powershell
 .\.venv\Scripts\python.exe -m dqagent.cli check-source --rules dqagent/rules/northstar.json
 ```
-Use ODBC Driver 18, percent-encode credential characters, and never paste the URL into logs or Git. See [verified discovery and business assumptions](docs/discovery.md). There is no fabricated ingestion timestamp, external pipeline integration or production incident injector.
+Use ODBC Driver 18, validate server certificates, percent-encode credential characters, and never paste the URL into logs or Git. Adapt the sample schema and business thresholds to your approved source. There is no fabricated ingestion timestamp, external pipeline integration or production incident injector.
 
 ## Verification
 
@@ -51,7 +51,7 @@ Use ODBC Driver 18, percent-encode credential characters, and never paste the UR
 .\.venv\Scripts\python.exe -m pytest -q --cov=dqagent --cov-fail-under=80
 .\.venv\Scripts\pip-audit.exe -r requirements.lock --disable-pip --no-deps
 ```
-Windows restricted execution environments may block the asyncio loopback socket used by TestClient; execute tests in a normal authorized terminal. [Testing results](docs/testing.md) separate actual checks from unverified deployment assumptions. CI runs Windows/Linux tests, lint, dependency audit and a container smoke test. Hash-pinned runtime/development lockfiles are checked in.
+Windows restricted execution environments may block the asyncio loopback socket used by TestClient; execute tests in a normal authorized terminal. [Acceptance report](docs/acceptance.md) and [testing results](docs/testing.md) separate actual checks from unverified deployment assumptions. The CI workflow is configured for Windows/Linux tests, lint, dependency audits and container smoke checks; no GitHub-hosted run is verified yet. Hash-pinned runtime/development lockfiles are checked in.
 
 ## Documentation
 
@@ -75,4 +75,4 @@ Repository name: `data-quality-pipeline-monitoring-agent`. If GitHub CLI access 
 gh repo create data-quality-pipeline-monitoring-agent --private --source=. --remote=origin --push
 gh repo view --json visibility,url
 ```
-Verify `PRIVATE` before sharing. Do not create a public repository to bypass access limitations. Only manually reviewed synthetic screenshots and the sanitized portfolio description should be public.
+These commands are a future operator step; this acceptance review does not publish the repository. Verify `PRIVATE` before sharing. Do not create a public repository to bypass access limitations. Only manually reviewed synthetic screenshots and the sanitized portfolio description should be public. Follow the [publishing checklist](docs/publishing.md).
