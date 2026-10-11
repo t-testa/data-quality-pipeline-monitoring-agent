@@ -7,6 +7,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from dqagent.evidence import EvidenceTools
+from dqagent.logging_utils import redact_text
+
+MAX_AI_INPUT_BYTES = 16384
 
 GUIDANCE = {
     "null": (
@@ -128,9 +131,18 @@ class Selection(BaseModel):
 
 
 def ask_model(settings, question, evidence):
+    import httpx
     from openai import OpenAI
 
-    with OpenAI(api_key=settings.openai_api_key.get_secret_value(), timeout=20, max_retries=0) as client:
+    # Pin the provider destination; ambient OPENAI_BASE_URL/proxy settings must
+    # not reroute credentials. No redirects or automatic retry amplification.
+    with OpenAI(
+        api_key=settings.openai_api_key.get_secret_value(),
+        base_url="https://api.openai.com/v1",
+        http_client=httpx.Client(trust_env=False, follow_redirects=False),
+        timeout=20,
+        max_retries=0,
+    ) as client:
         answer = client.responses.parse(
             model=settings.openai_model,
             store=False,
@@ -220,15 +232,26 @@ def diagnose(store, settings, question, model_call=ask_model):
         else "not requested"
     )
     if question.use_ai and settings.openai_api_key.get_secret_value() and settings.openai_model:
-        if not store.reserve_ai():
+        safe_question = redact_text(
+            question.question,
+            [
+                getattr(settings, key).get_secret_value()
+                for key in ("api_token", "diagnostic_token", "source_url", "openai_api_key")
+            ],
+        )
+        context = {"facts": model_facts, "allowed_guidance": sorted(categories)}
+        payload_bytes = len(json.dumps({"question": safe_question, "evidence": context}).encode())
+        if payload_bytes > MAX_AI_INPUT_BYTES:
+            ai_status = "unavailable: AI input size limit exceeded; deterministic evidence retained"
+        elif not store.reserve_ai():
             ai_status = "unavailable: daily request limit reached"
         else:
             try:
                 choice = Selection.model_validate(
                     model_call(
                         settings,
-                        question.question,
-                        {"facts": model_facts, "allowed_guidance": sorted(categories)},
+                        safe_question,
+                        context,
                     )
                 )
                 ids = {f["evidence_id"] for f in model_facts}

@@ -15,6 +15,8 @@ def make_server():
         raise ValueError("Set DQ_MCP_TOKEN to an authorized monitoring read token")
     base = os.environ.get("DQ_MCP_API_URL", "http://127.0.0.1:8765")
     url = httpx.URL(base)
+    if url.userinfo or url.query or url.fragment:
+        raise ValueError("MCP API URL must not contain credentials, query or fragment")
     if url.scheme != "https" and not (url.scheme == "http" and url.host in {"127.0.0.1", "localhost"}):
         raise ValueError("Remote MCP API connections require HTTPS")
     server = FastMCP("data-quality-monitoring")

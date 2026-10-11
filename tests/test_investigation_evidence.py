@@ -227,13 +227,10 @@ def test_maximum_check_set_keeps_model_context_bounded(store, settings):
     settings.openai_model = "test-model"
 
     def model(_, prompt, evidence):
-        assert len(evidence["facts"]) == 101
-        assert len(json.dumps(evidence).encode()) < 262144
-        assert "PRIVATE NAME" not in json.dumps(evidence)
-        return {"evidence_ids": [evidence["facts"][1]["evidence_id"]], "guidance": ["row_count"]}
+        pytest.fail("Oversized AI input must not reach the provider")
 
     result = diagnose(store, settings, question(store.run(run_id), use_ai=True), model)
-    assert result["ai_status"].startswith("available")
+    assert "AI input size limit" in result["ai_status"]
     assert len(result["facts"]) == 101
 
 

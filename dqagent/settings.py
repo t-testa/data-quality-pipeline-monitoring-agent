@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     source_url: SecretStr = SecretStr("")
     openai_api_key: SecretStr = SecretStr("")
     openai_model: str = ""
+    min_free_disk_bytes: int = Field(default=64 * 1024 * 1024, ge=0)
 
     def require_auth(self):
         tokens = [self.api_token.get_secret_value(), self.diagnostic_token.get_secret_value()]

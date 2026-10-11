@@ -1,8 +1,12 @@
 import asyncio
+import json
+import logging
 import secrets
+import shutil
 import sqlite3
 import threading
 import time
+import uuid
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -91,7 +95,27 @@ def create_app(settings=None):
 
     @app.middleware("http")
     async def security_headers(request, call_next):
-        response = await call_next(request)
+        request_id, started = uuid.uuid4().hex, time.monotonic()
+        status = 500
+        try:
+            response = await call_next(request)
+            status = response.status_code
+        finally:
+            # Only fixed route templates and generated IDs; no URL parameters,
+            # request bodies, credentials or raw exception text.
+            route = request.scope.get("route")
+            logging.getLogger("dqagent").info(
+                json.dumps(
+                    {
+                        "event": "http_request",
+                        "request_id": request_id,
+                        "route": getattr(route, "path", "unmatched"),
+                        "status": status,
+                        "duration_ms": round((time.monotonic() - started) * 1000, 2),
+                    }
+                )
+            )
+        response.headers["X-Request-ID"] = request_id
         response.headers.update(
             {
                 "Cache-Control": "no-store",
@@ -113,10 +137,12 @@ def create_app(settings=None):
     @app.get("/ready")
     def readiness():
         try:
+            if shutil.disk_usage(settings.data_dir).free < settings.min_free_disk_bytes:
+                return JSONResponse({"status": "unavailable"}, 503)
             with store.db() as db:
                 db.execute("SELECT id FROM runs LIMIT 1").fetchone()
             return {"status": "ready"}
-        except sqlite3.Error:
+        except (sqlite3.Error, OSError):
             return JSONResponse({"status": "unavailable"}, 503)
 
     static = Path(__file__).parent / "static"

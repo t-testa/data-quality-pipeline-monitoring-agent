@@ -4,7 +4,7 @@ WORKDIR /app
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends curl ca-certificates unixodbc \
     && curl -fsSLo /tmp/packages-microsoft-prod.deb https://packages.microsoft.com/config/debian/13/packages-microsoft-prod.deb \
     && dpkg -i /tmp/packages-microsoft-prod.deb \
-    && apt-get update && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
+    && apt-get update && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 libgssapi-krb5-2 \
     && apt-get purge -y --auto-remove curl \
     && rm -rf /var/lib/apt/lists/* /tmp/packages-microsoft-prod.deb
 COPY requirements-toolchain.lock ./
@@ -14,6 +14,9 @@ RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 # Package installers and their vendored libraries are not needed by the runtime.
 RUN pip uninstall -y pip && rm -rf /usr/local/lib/python3.12/ensurepip
 RUN useradd --uid 10001 --create-home monitor && mkdir /data && chown monitor:monitor /data
+# No runtime feature needs setuid/setgid helpers. This is a compensating control,
+# not a claim that the underlying distribution advisories are fixed.
+RUN find /usr -xdev -type f -perm /6000 -exec chmod a-s {} +
 COPY dqagent ./dqagent
 USER 10001:10001
 ENV DQ_DATA_DIR=/data

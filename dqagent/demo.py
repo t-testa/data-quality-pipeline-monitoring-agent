@@ -2,6 +2,7 @@
 
 import sqlite3
 import time
+from contextlib import closing
 from datetime import UTC, datetime, timedelta
 
 from dqagent.contracts import Kind, Rule
@@ -30,7 +31,7 @@ def demo_path(store, scenario):
 
 def seed(store, scenario):
     path = demo_path(store, scenario)
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.executescript("""
         CREATE TABLE IF NOT EXISTS customers (id INTEGER NOT NULL, name VARCHAR(80), updated_at DATETIME NOT NULL);
         CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL,
@@ -57,7 +58,7 @@ def seed(store, scenario):
 def inject(store, scenario):
     """Idempotent fixture mutation confined to a generated demo path."""
     path = seed(store, scenario)
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         if db.execute("SELECT COUNT(*) FROM simulation").fetchone()[0]:
             return
         if scenario == "duplicates":
@@ -152,7 +153,7 @@ def rules():
 
 def load_increment(store, scenario, fail=False):
     path = seed(store, scenario)
-    with sqlite3.connect(path, timeout=5) as db:
+    with closing(sqlite3.connect(path, timeout=5)) as db, db:
         db.execute("BEGIN IMMEDIATE")
         db.execute("CREATE VIEW IF NOT EXISTS active_orders AS SELECT id,amount FROM orders WHERE deleted=0")
         watermark = db.execute("SELECT version FROM checkpoint WHERE id=1").fetchone()[0]

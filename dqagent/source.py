@@ -56,13 +56,27 @@ def verify_readonly_identity(engine, rules):
 
 
 def sqlserver_reader(url: str):
+    import re
+
     from sqlalchemy.engine import make_url
 
     parsed = make_url(url)
     if parsed.drivername != "mssql+pyodbc":
         raise ValueError("Only mssql+pyodbc is supported for external sources")
-    if str(parsed.query.get("Encrypt", "")).lower() not in {"yes", "true", "mandatory"}:
+    # ODBC connection strings and duplicate/case-variant options can override TLS.
+    query = {key.lower(): value for key, value in parsed.query.items()}
+    if len(query) != len(parsed.query) or any(not isinstance(v, str) for v in query.values()):
+        raise ValueError("Duplicate SQL connection options are not permitted")
+    if (
+        "odbc_connect" in query
+        or any(";" in value for value in query.values())
+        or any(not re.fullmatch(r"[a-z][a-z0-9_]*", key) for key in query)
+    ):
+        raise ValueError("Opaque or compound ODBC options are not permitted")
+    if query.get("encrypt", "").lower() not in {"yes", "true", "mandatory", "strict"}:
         raise ValueError("SQL Server connections must explicitly enable Encrypt=yes")
+    if query.get("trustservercertificate", "no").lower() not in {"no", "false"}:
+        raise ValueError("SQL Server certificate validation is required")
     engine = create_engine(
         parsed, pool_size=2, max_overflow=0, pool_timeout=3, pool_pre_ping=True, connect_args={"timeout": 5}
     )

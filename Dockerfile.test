@@ -7,5 +7,6 @@ FROM ${RUNTIME_IMAGE}
 USER root
 COPY --from=test-dependencies /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY tests ./tests
+COPY scripts/backup.py ./scripts/backup.py
 COPY pyproject.toml ./
 CMD ["python", "-m", "pytest", "-q", "--basetemp=/tmp/dq-tests", "--cov=dqagent", "--cov-fail-under=80"]

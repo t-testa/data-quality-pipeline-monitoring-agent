@@ -1,0 +1,20 @@
+[
+  {"id":"duplicate", "scenario":"duplicates", "check":"customer_key", "category":"duplicate", "measured":1, "response":"valid", "expected":"available"},
+  {"id":"foreign-key", "scenario":"missing_reference", "check":"order_customer", "category":"reference", "measured":1, "response":"valid", "expected":"available"},
+  {"id":"row-decline", "scenario":"row_decline", "check":"volume_change", "category":"anomaly", "measured":80, "response":"valid", "expected":"available"},
+  {"id":"schema-drift", "scenario":"schema_change", "check":"customer_schema", "category":"schema", "measured":1, "response":"valid", "expected":"available"},
+  {"id":"pipeline-failure", "scenario":"pipeline_failure", "check":null, "category":"pipeline", "response":"valid", "expected":"available"},
+  {"id":"healthy", "scenario":"success", "check":null, "category":null, "response":"valid", "expected":"available"},
+  {"id":"no-run", "scenario":null, "check":null, "category":null, "response":"never", "expected":"unavailable"},
+  {"id":"no-checks", "scenario":"empty", "check":null, "category":null, "response":"valid", "expected":"available"},
+  {"id":"invented-id", "scenario":"duplicates", "check":"customer_key", "category":"duplicate", "response":"invented", "expected":"unavailable"},
+  {"id":"wrong-guidance", "scenario":"duplicates", "check":"customer_key", "category":"duplicate", "response":"wrong-category", "expected":"unavailable"},
+  {"id":"extra-sql", "scenario":"duplicates", "check":"customer_key", "category":"duplicate", "response":"extra-sql", "expected":"unavailable"},
+  {"id":"question-injection", "scenario":"duplicates", "check":"customer_key", "category":"duplicate", "response":"valid", "attack":true, "expected":"available"},
+  {"id":"record-injection", "scenario":"duplicates", "check":"customer_key", "category":"duplicate", "response":"valid", "poison":true, "expected":"available"},
+  {"id":"provider-timeout", "scenario":"duplicates", "check":"customer_key", "category":"duplicate", "response":"timeout", "expected":"unavailable"},
+  {"id":"provider-error", "scenario":"duplicates", "check":"customer_key", "category":"duplicate", "response":"error", "expected":"unavailable"},
+  {"id":"provider-refusal", "scenario":"duplicates", "check":"customer_key", "category":"duplicate", "response":"refusal", "expected":"unavailable"},
+  {"id":"provider-invalid-contract", "scenario":"duplicates", "check":"customer_key", "category":"duplicate", "response":"invalid", "expected":"unavailable"},
+  {"id":"missing-key", "scenario":"duplicates", "check":"customer_key", "category":"duplicate", "response":"never", "no_key":true, "expected":"unavailable"}
+]

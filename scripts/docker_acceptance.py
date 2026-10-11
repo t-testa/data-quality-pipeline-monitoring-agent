@@ -1,13 +1,19 @@
 """Fresh isolated container acceptance. Never reads the operator's .env or source database."""
 
+import asyncio
 import hashlib
 import json
+import math
 import os
 import secrets
+import statistics
 import subprocess
+import sys
+import time
 import urllib.error
 import urllib.request
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
@@ -81,6 +87,47 @@ def snapshot():
     return [request("/api/runs/" + r["id"]) for r in request("/api/runs?limit=100")]
 
 
+def latency_summary(values, target):
+    ordered = sorted(values)
+    p95 = ordered[math.ceil(len(ordered) * 0.95) - 1]
+    assert p95 < target, f"p95 {p95:.1f} ms exceeded {target} ms target"
+    return {
+        "requests": len(values),
+        "p50_ms": round(statistics.median(values), 2),
+        "p95_ms": round(p95, 2),
+        "max_ms": round(max(values), 2),
+        "errors": 0,
+    }
+
+
+async def mcp_load(run):
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+
+    parameters = StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "dqagent.mcp_server"],
+        env={"DQ_MCP_TOKEN": read_token, "DQ_MCP_API_URL": base},
+    )
+    async with stdio_client(parameters) as (read, write), ClientSession(read, write) as session:
+        await session.initialize()
+        assert len((await session.list_tools()).tools) == 9
+        semaphore = asyncio.Semaphore(4)
+
+        async def call():
+            async with semaphore:
+                started = time.monotonic()
+                result = await session.call_tool(
+                    "get_incident_details", {"pipeline": run["pipeline"], "run_id": run["id"], "limit": 100}
+                )
+                assert not result.isError
+                payload = result.structuredContent or json.loads(result.content[0].text)
+                assert payload["data"]["run"]["id"] == run["id"]
+                return (time.monotonic() - started) * 1000
+
+        return latency_summary(await asyncio.gather(*(call() for _ in range(24))), 2000)
+
+
 report = {"project": project, "image": image, "checks": {}}
 try:
     print("Building fresh image without cache...", flush=True)
@@ -113,6 +160,24 @@ try:
         assert diagnosis["facts"][0]["run_id"] == r["id"]
         assert "999999" not in str(diagnosis)
     report["checks"]["http_auth_and_keyless_diagnostics_16_runs"] = "PASS"
+
+    def dashboard_read(_):
+        started = time.monotonic()
+        assert request("/api/runs?limit=30")
+        return (time.monotonic() - started) * 1000
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        report["dashboard_load"] = latency_summary(list(pool.map(dashboard_read, range(60))), 500)
+    report["mcp_load"] = asyncio.run(mcp_load(before[0]["run"]))
+    report["checks"]["bounded_concurrent_http_and_mcp"] = "PASS"
+    started = time.monotonic()
+    run(compose + ["kill", "-s", "SIGKILL", "monitor"])
+    run(compose + ["up", "-d", "--wait", "--wait-timeout", "30"])
+    base = "http://" + run(compose + ["port", "monitor", "8765"])
+    assert snapshot() == before
+    report["kill_recovery_seconds"] = round(time.monotonic() - started, 2)
+    assert report["kill_recovery_seconds"] < 30
+    report["checks"]["sigkill_exact_completed_history"] = "PASS"
     run(compose + ["restart"])
     run(compose + ["up", "-d", "--wait"])
     base = "http://" + run(compose + ["port", "monitor", "8765"])
@@ -126,6 +191,9 @@ try:
     backup_code = "import sqlite3; s=sqlite3.connect('file:/data/monitoring.sqlite?mode=ro',uri=True); b=sqlite3.connect('/tmp/restore.sqlite'); s.backup(b); assert b.execute('PRAGMA integrity_check').fetchone()[0]=='ok'; assert list(s.iterdump())==list(b.iterdump()); print('Backup and restored contents match')"
     run(compose + ["exec", "-T", "monitor", "python", "-c", backup_code])
     report["checks"]["online_backup_restore_exact_contents"] = "PASS"
+    driver_code = "import ctypes,glob,pyodbc; ctypes.CDLL(glob.glob('/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18*.so*')[0]); assert 'ODBC Driver 18 for SQL Server' in pyodbc.drivers(); print('ODBC shared library loads')"
+    run(compose + ["exec", "-T", "monitor", "python", "-c", driver_code])
+    report["checks"]["odbc_driver_loads"] = "PASS"
     assert run(compose + ["exec", "-T", "monitor", "id", "-u"]) == "10001"
     report["checks"]["nonroot_uid"] = "PASS"
     report["history_sha256"] = hashlib.sha256(json.dumps(before, sort_keys=True).encode()).hexdigest()

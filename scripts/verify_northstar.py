@@ -1,36 +1,20 @@
-"""One-time integrated Windows discovery validation; never configures a scheduled admin connection."""
+"""Validate the approved source with the same least-privilege gate as the CLI."""
 
 from pathlib import Path
 
-from sqlalchemy import URL, text
-
 from dqagent.quality import QualityEngine, load_rules
-from dqagent.source import sqlserver_reader
+from dqagent.settings import Settings
+from dqagent.source import sqlserver_reader, verify_readonly_identity
 from dqagent.store import Store
 
-url = URL.create(
-    "mssql+pyodbc",
-    host="localhost",
-    database="NorthstarBI",
-    query={
-        "driver": "ODBC Driver 18 for SQL Server",
-        "Encrypt": "yes",
-        "TrustServerCertificate": "yes",
-        "Trusted_Connection": "yes",
-    },
-)
-engine = sqlserver_reader(url.render_as_string(hide_password=False))
-store = Store(Path("data"))
-run_id = store.start("northstar-discovery", "one-time-Windows-identity-read-only-queries")
-results = []
+settings = Settings()
+engine = sqlserver_reader(settings.source_url.get_secret_value())
 try:
-    with engine.connect() as conn:
-        print("Connected database:", conn.scalar(text("SELECT DB_NAME()")))
-        print("Current identity is sysadmin:", conn.scalar(text("SELECT IS_SRVROLEMEMBER('sysadmin')")))
-    results = [
-        QualityEngine(engine).check(r, store.baseline("northstar-discovery", r.id))
-        for r in load_rules(Path("dqagent/rules/northstar.json"))
-    ]
+    rules = load_rules(Path("dqagent/rules/northstar.json"))
+    verify_readonly_identity(engine, rules)
+    store = Store(settings.data_dir)
+    run_id = store.start("northstar-discovery", "external-read-only-validation")
+    results = [QualityEngine(engine).check(r, store.baseline("northstar-discovery", r.id)) for r in rules]
     store.finish(run_id, results)
     print("Run:", run_id)
     for result in results:

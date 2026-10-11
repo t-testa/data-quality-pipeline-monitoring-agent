@@ -26,6 +26,14 @@ The run summary reports `validation_status`, `recorded_check_count` and counts b
 
 The optional model sees only the run summary and non-passing check projections, bounded by the existing 100-check/256-KiB evidence-tool limits and 1,000-character question limit. It receives no raw expected/details dictionaries, row text, check names, logs or connection strings. Returned references must belong to that supplied context, and guidance must match the selected problem. Model selection never suppresses deterministic facts. Passing-check IDs remain in the user response but are not eligible model references because they are not sent to the model.
 
+An additional 16 KiB bound applies to serialized question plus projected evidence
+before reserving a paid attempt. Oversized contexts skip AI and retain all
+deterministic facts. Questions undergo credential-pattern/known-secret redaction;
+this does not make arbitrary sensitive prose safe to send. Provider destination,
+proxy and redirect restrictions are documented in [security](security.md).
+This is evidence selection, not autonomous MCP tool selection; no model tool
+definitions or MCP connection are supplied to the provider.
+
 ## Real MCP stdio server
 
 Install the project dependencies, start the API and configure an approved MCP client:

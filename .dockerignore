@@ -9,5 +9,7 @@
 !tests/**
 !pyproject.toml
 !Dockerfile.test
+!scripts/
+!scripts/backup.py
 dqagent/**/__pycache__/
 **/__pycache__/

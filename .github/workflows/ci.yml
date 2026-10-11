@@ -45,6 +45,12 @@ jobs:
       - run: docker compose up -d --wait
       - run: python scripts/smoke_http.py
       - run: mkdir -p artifacts && docker save data-quality-pipeline-monitoring-agent:local -o artifacts/image.tar
+      - name: Inventory all image vulnerabilities including unfixed findings
+        run: >-
+          docker run --rm -v "${{ github.workspace }}/artifacts:/scan"
+          aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
+          image --input /scan/image.tar --scanners vuln
+          --format json --output /scan/image-audit-full.json
       - name: Scan image and reject fixable high or critical vulnerabilities
         run: >-
           docker run --rm -v "${{ github.workspace }}/artifacts:/scan"
@@ -55,6 +61,6 @@ jobs:
         if: always()
         with:
           name: image-audit
-          path: artifacts/image-audit.json
+          path: artifacts/image-audit*.json
       - if: always()
         run: docker compose down
