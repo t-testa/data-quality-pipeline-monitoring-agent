@@ -2,15 +2,20 @@
 
 import hashlib
 import json
+import shutil
 import sqlite3
 import tempfile
 import time
 from contextlib import closing
 from pathlib import Path
 
+from fastapi.testclient import TestClient
+
+from dqagent.api import create_app
 from dqagent.contracts import Result
 from dqagent.demo import rules
 from dqagent.quality import utcnow
+from dqagent.settings import Settings
 from dqagent.store import Store
 from scripts.backup import backup
 
@@ -51,6 +56,24 @@ def main():
             assert restored.execute("SELECT COUNT(*) FROM runs").fetchone()[0] == 1000
             assert restored.execute("SELECT COUNT(*) FROM results").fetchone()[0] == 10000
         assert source_hash == restored_hash
+        restored_root = root / "restored-application"
+        restored_root.mkdir()
+        shutil.copyfile(root / "backup.sqlite", restored_root / "monitoring.sqlite")
+        settings = Settings(
+            _env_file=None,
+            data_dir=restored_root,
+            api_token="r" * 40,
+            diagnostic_token="d" * 40,
+            openai_api_key="",
+            openai_model="",
+            source_url="",
+        )
+        with TestClient(create_app(settings)) as client:
+            assert client.get("/ready").status_code == 200
+            response = client.get("/api/runs/" + run_id, headers={"Authorization": "Bearer " + "r" * 40})
+            assert response.status_code == 200
+            assert response.json()["run"] == store.run(run_id)
+            assert response.json()["results"] == store.results(run_id)
         recovery_seconds = time.monotonic() - started
         assert recovery_seconds < 60
         report = {
@@ -63,6 +86,7 @@ def main():
             "logical_sha256": source_hash,
             "integrity": "ok",
             "contents_match": True,
+            "fresh_application_from_restored_copy": "PASS",
             "scope": "Synthetic local capacity sample; no retention deletion; not an Azure benchmark",
         }
         Path("artifacts").mkdir(exist_ok=True)
