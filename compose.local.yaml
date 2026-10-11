@@ -1,0 +1,30 @@
+# Prepared local-only configuration. Do not attach a second writer to a live volume.
+# Set NORTHWATCH_DATA_VOLUME to an existing, explicitly selected Docker volume.
+name: northwatch-local
+services:
+  monitor:
+    extends:
+      file: compose.yaml
+      service: monitor
+    image: ${NORTHWATCH_LOCAL_IMAGE:-northwatch-local:candidate}
+    environment:
+      DQ_DATA_DIR: /data
+      DQ_OPENAI_API_KEY: ""
+      DQ_OPENAI_MODEL: ""
+      DQ_SOURCE_URL: ""
+    pids_limit: 128
+    stop_grace_period: 30s
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/ready',timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks: [local-only]
+networks:
+  local-only:
+    driver: bridge
+volumes:
+  monitoring-data:
+    external: true
+    name: ${NORTHWATCH_DATA_VOLUME:?Set an existing Docker volume explicitly}

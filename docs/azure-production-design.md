@@ -1,5 +1,9 @@
 # Azure production design and complete planning estimate
 
+**POSTPONED by owner decision, 2026-10-11: recurring costs are too high.**
+Retained as design history only. No provisioning, deployment or new hosting charge
+is authorized. The active plan is [local Docker](deployment.md).
+
 Review date: 2026-10-11. **Design only; deployment BLOCKED.** No Azure resource,
 public application endpoint or infrastructure change was made.
 The private GitHub repository is not an application network boundary.

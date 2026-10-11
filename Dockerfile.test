@@ -9,5 +9,7 @@ COPY --from=test-dependencies /usr/local/lib/python3.12/site-packages /usr/local
 COPY tests ./tests
 COPY scripts/backup.py ./scripts/backup.py
 COPY scripts/live_ai_evaluation.py ./scripts/live_ai_evaluation.py
+COPY scripts/targeted_ai_evaluation.py ./scripts/targeted_ai_evaluation.py
+COPY scripts/local_snapshot.py ./scripts/local_snapshot.py
 COPY pyproject.toml ./
 CMD ["python", "-m", "pytest", "-q", "--basetemp=/tmp/dq-tests", "--cov=dqagent", "--cov-fail-under=80"]

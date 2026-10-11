@@ -12,5 +12,7 @@
 !scripts/
 !scripts/backup.py
 !scripts/live_ai_evaluation.py
+!scripts/targeted_ai_evaluation.py
+!scripts/local_snapshot.py
 dqagent/**/__pycache__/
 **/__pycache__/

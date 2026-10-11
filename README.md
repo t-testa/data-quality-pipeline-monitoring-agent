@@ -2,9 +2,12 @@
 
 **Northwatch** turns database quality contracts and pipeline execution records into inspectable evidence. It includes an incremental demo loader, ten configurable check types, persistent monitoring, a private dashboard, nine read-only MCP tools, and optional tightly grounded OpenAI diagnostics.
 
-Current status: [production hardening and acceptance](docs/production-readiness.md).
-Local verification passes; unresolved image advisories and operational prerequisites
-block production approval. No paid AI validation or Azure deployment is claimed.
+Current direction: **private local Docker portfolio; Azure postponed for cost**.
+See [local operations](docs/deployment.md), [local validation](docs/local-readiness.md)
+and the [portfolio case study](docs/portfolio.md). No new hosting subscription or
+paid AI call is required. The earlier approved [targeted AI retest](docs/targeted-ai-evaluation.md)
+passed 3/3; its approval is exhausted. Unresolved image advisories still block
+production release. No Azure deployment or external exposure is authorized.
 
 Built as a separate project. Existing source databases and reports are accessed read-only. Source repository is intended to remain private; no cloud deployment or public endpoint is created by setup. Screenshots and demonstrations use synthetic data.
 
@@ -23,6 +26,12 @@ If `.env` already exists, skip `init`; it intentionally refuses to overwrite sec
 Open [localhost:8765](http://127.0.0.1:8765). Copy `DQ_API_TOKEN` from your local `.env` into the dashboard's access field. The dashboard stores it only in memory. Use `DQ_DIAGNOSTIC_TOKEN` only when invoking optional AI. Without an API key, deterministic evidence remains fully operational and the interface explicitly marks AI unavailable.
 
 ## Docker
+
+The existing service/history remain intact. A separate `compose.local.yaml` is
+prepared for a later approved switch, with an explicit existing volume and AI/source
+connections disabled for synthetic portfolio use. Follow the [operations guide](docs/deployment.md)
+for backup, restore and activation. Do not replace the running app just to view
+recorded demonstration evidence. The commands below describe the original setup.
 
 With a generated `.env` and Docker Desktop running:
 ```powershell
@@ -55,7 +64,14 @@ Use ODBC Driver 18, validate server certificates, percent-encode credential char
 .\.venv\Scripts\python.exe -m pytest -q --cov=dqagent --cov-fail-under=80
 .\.venv\Scripts\pip-audit.exe -r requirements.lock --disable-pip --no-deps
 ```
-Windows restricted execution environments may block the asyncio loopback socket used by TestClient; execute tests in a normal authorized terminal. The [current acceptance report](docs/production-readiness.md) separates actual checks from unverified deployment assumptions. The CI workflow runs Windows/Linux tests, lint, dependency audits and container checks; the preceding published revision has a verified hosted run, while the hardening changes are locally validated until explicitly published. Hash-pinned runtime/development lockfiles are checked in. CI exports the full image inventory as well as preserving its fixable-HIGH/CRITICAL gate; an unresolved finding is not a production approval.
+Windows restricted execution environments may block TestClient loopback sockets;
+run tests in an authorized normal terminal. [Local validation](docs/local-readiness.md)
+separates measured behavior from production assumptions. The unchanged CI workflow
+runs Windows/Linux tests, lint, secret/dependency audits and container checks.
+Published `e95a822` passed [hosted Actions](https://github.com/t-testa/data-quality-pipeline-monitoring-agent/actions/runs/38164558506);
+later local preparation is not covered by that run. Locks remain hash-pinned.
+CI exports all image findings and retains its fixable-HIGH/CRITICAL gate; a green
+job does not clear the stricter unsuppressed production release gate.
 
 ## Documentation
 
@@ -63,8 +79,9 @@ Windows restricted execution environments may block the asyncio loopback socket 
 - [Quality rule catalog](docs/rules.md)
 - [API and MCP client configuration](docs/api-mcp.md)
 - [Security boundaries](docs/security.md)
-- [Private Azure proposal, costs and rollback](docs/deployment.md)
-- [Current Azure production design and complete costs](docs/azure-production-design.md)
+- [Local Compose, backup/restore and rollback](docs/deployment.md)
+- [Optional Tailscale assessment — not enabled](docs/tailscale-evaluation.md)
+- [Postponed Azure design and complete costs](docs/azure-production-design.md)
 - [Individual vulnerability dispositions](docs/vulnerability-register.md)
 - [Portfolio story and demo checklist](docs/portfolio.md)
 
@@ -72,7 +89,11 @@ Windows restricted execution environments may block the asyncio loopback socket 
 
 Single host, one API worker, no automatic scheduler or remediation. A crashed run remains running until an operator confirms the process stopped and runs `python -m dqagent.cli recover RUN_ID --operator-confirmed-stopped`. Use `python -m scripts.backup PRIVATE_DESTINATION.sqlite` for a consistent local metadata backup; restore only while writers are stopped and verify integrity. Backups contain private monitoring evidence.
 
-The AI selects evidence and curated hypotheses; it does not author unverified root causes. Free-form historical questions do not select dates automatically—choose a run explicitly. Source checks are separate reads, so reconciliation needs a stable source window. SQLite is not a multi-host cloud store. No Entra login, external scheduler connector, automated alert delivery, model-live verification or Azure deployment is claimed.
+The AI selects evidence and curated hypotheses; it does not author verified root
+causes. Choose a run explicitly; free-form dates do not select history. Source
+reconciliation needs a stable source window. SQLite remains single-host. No
+per-user enterprise login, external scheduler connector, automated alert delivery
+or Azure deployment is claimed. Historical paid evaluations do not authorize new calls.
 
 ## Private GitHub publishing
 

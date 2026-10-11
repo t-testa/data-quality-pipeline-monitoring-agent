@@ -1,5 +1,12 @@
 # Northwatch production hardening and acceptance — 2026-10-11
 
+**Current operating decision: Azure postponed; private local Docker portfolio.**
+See [local preparation and validation](local-readiness.md). The earlier cloud costs
+and acceptance criteria below remain historical evidence, not a deployment request.
+Published `e95a822` subsequently passed [all hosted jobs](https://github.com/t-testa/data-quality-pipeline-monitoring-agent/actions/runs/38164558506),
+including 199 tests on each OS; its full scan retained the 44 HIGH findings. New local
+preparation is validated separately and does not accept those findings.
+
 **Decision: BLOCKED for production release.** Safe local hardening is implemented
 and verified. Functional tests passing does not resolve operating-system advisories,
 prove live model quality, provision a least-privilege SQL identity or establish cloud

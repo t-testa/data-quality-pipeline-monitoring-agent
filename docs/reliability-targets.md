@@ -1,5 +1,9 @@
 # Local acceptance targets — defined before the hardening load/fault tests
 
+Azure is now postponed. The operational objectives below are retained as future
+production targets, not a current cloud plan. See [local validation](local-readiness.md)
+for the prepared zero-subscription-cost portfolio setup and tested full-volume recovery.
+
 Scope: one API worker, one local SQLite WAL database, 512 MiB container memory,
 one CPU, synthetic data only, fresh isolated Docker volume. This is not an Azure
 benchmark or a high-availability commitment.
