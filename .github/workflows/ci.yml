@@ -21,7 +21,7 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: python scripts/scan_secrets.py --history
-      - run: pytest -q --cov=dqagent --cov-branch --cov-fail-under=80 --junitxml=artifacts/tests.xml
+      - run: python -m pytest -q --cov=dqagent --cov-branch --cov-fail-under=80 --junitxml=artifacts/tests.xml
       - run: pip-audit -r requirements.lock --disable-pip --no-deps
       - run: pip-audit -r requirements-dev.lock --disable-pip --no-deps
       - run: pip-audit -r requirements-toolchain.lock --disable-pip --no-deps
