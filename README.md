@@ -76,6 +76,8 @@ job does not clear the stricter unsuppressed production release gate.
 ## Documentation
 
 - [Architecture, data flow and pipeline semantics](docs/architecture.md)
+- [Local portfolio architecture diagram](docs/portfolio-architecture.md)
+- [Local validation report and remaining limitations](docs/local-readiness.md)
 - [Quality rule catalog](docs/rules.md)
 - [API and MCP client configuration](docs/api-mcp.md)
 - [Security boundaries](docs/security.md)
