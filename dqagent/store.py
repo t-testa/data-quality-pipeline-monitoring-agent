@@ -136,7 +136,8 @@ class Store:
             "pass_rate": round(100 * sum(r["status"] == "pass" for r in results) / len(results), 1)
             if results
             else None,
-            "active_issues": sum(r["status"] != "pass" for r in results),
+            "active_issues": sum(r["status"] != "pass" for r in results)
+            + sum(bool(r["error"]) for r in latest),
             "freshness": [r for r in results if r["kind"] == "freshness"],
             "scope": "Latest run per pipeline; run counts are all-time; maximum 100 pipelines",
         }

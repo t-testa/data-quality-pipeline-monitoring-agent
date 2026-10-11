@@ -10,6 +10,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from dqagent.contracts import Question
 from dqagent.diagnostics import diagnose
 from dqagent.evidence import EvidenceTools, ToolInput
+from dqagent.logging_utils import install_redaction
 from dqagent.settings import Settings
 from dqagent.store import Store
 
@@ -50,6 +51,7 @@ class RequestBounds:
 def create_app(settings=None):
     settings = settings or Settings()
     settings.require_auth()
+    install_redaction(settings)
     store = Store(settings.data_dir)
     tools = EvidenceTools(store)
     app = FastAPI(

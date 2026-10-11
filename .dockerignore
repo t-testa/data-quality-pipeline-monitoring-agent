@@ -1,0 +1,11 @@
+*
+!Dockerfile
+!requirements.lock
+!dqagent/
+!dqagent/**
+!requirements-dev.lock
+!tests/
+!tests/**
+!pyproject.toml
+!Dockerfile.test
+dqagent/**/__pycache__/

@@ -23,6 +23,38 @@ def sqlite_reader(path: Path):
     return engine
 
 
+def verify_readonly_identity(engine, rules):
+    """Fail closed on elevated identities or write permissions on monitored objects."""
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        elevated = conn.scalar(
+            text(
+                "SELECT CASE WHEN IS_SRVROLEMEMBER('sysadmin')=1 OR IS_MEMBER('db_owner')=1 OR IS_MEMBER('db_ddladmin')=1 THEN 1 ELSE 0 END"
+            )
+        )
+        if elevated != 0:
+            raise PermissionError("Use a dedicated least-privilege source identity")
+        objects = {(r.schema_name or "dbo", r.table) for r in rules}
+        objects |= {(r.schema_name or "dbo", r.other_table) for r in rules if r.other_table}
+        for schema, table in objects:
+            for permission in ("INSERT", "UPDATE", "DELETE", "ALTER", "CONTROL", "TAKE OWNERSHIP"):
+                value = conn.scalar(
+                    text("SELECT HAS_PERMS_BY_NAME(:object, 'OBJECT', :permission)"),
+                    {"object": f"{schema}.{table}", "permission": permission},
+                )
+                if value != 0:
+                    raise PermissionError("Source write permissions or unresolved object detected")
+            if (
+                conn.scalar(
+                    text("SELECT HAS_PERMS_BY_NAME(:object, 'OBJECT', 'SELECT')"),
+                    {"object": f"{schema}.{table}"},
+                )
+                != 1
+            ):
+                raise PermissionError("Source SELECT permission required")
+
+
 def sqlserver_reader(url: str):
     from sqlalchemy.engine import make_url
 

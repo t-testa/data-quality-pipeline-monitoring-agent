@@ -1,0 +1,7 @@
+FROM data-quality-pipeline-monitoring-agent:local
+USER root
+COPY requirements-dev.lock ./
+RUN pip install --no-cache-dir --require-hashes -r requirements-dev.lock
+COPY tests ./tests
+COPY pyproject.toml ./
+CMD ["python", "-m", "pytest", "-q", "--basetemp=/tmp/dq-tests", "--cov=dqagent", "--cov-fail-under=80"]

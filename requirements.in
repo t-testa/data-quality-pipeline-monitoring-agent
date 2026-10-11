@@ -7,3 +7,4 @@ pyodbc==5.2.0
 openai==1.82.0
 mcp==1.28.1
 httpx==0.28.1
+pywin32==312; sys_platform == "win32"

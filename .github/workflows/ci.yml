@@ -1,0 +1,41 @@
+name: verify
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install --require-hashes -r requirements-dev.lock
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: python scripts/scan_secrets.py
+      - run: pytest -q --cov=dqagent --cov-fail-under=80 --junitxml=artifacts/tests.xml
+      - run: pip-audit -r requirements.lock --disable-pip --no-deps
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}
+          path: artifacts/tests.xml
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/container_env.py
+      - run: docker compose up -d --build --wait
+      - run: docker compose exec -T monitor python -m dqagent.cli demo all
+      - run: python scripts/smoke_http.py
+      - if: always()
+        run: docker compose down

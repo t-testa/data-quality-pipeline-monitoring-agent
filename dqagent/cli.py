@@ -6,7 +6,7 @@ from pathlib import Path
 from dqagent.demo import SCENARIOS, scenario_demo
 from dqagent.quality import QualityEngine, load_rules
 from dqagent.settings import Settings
-from dqagent.source import sqlserver_reader
+from dqagent.source import sqlserver_reader, verify_readonly_identity
 from dqagent.store import Store
 
 
@@ -52,6 +52,7 @@ def main():
             parser.error("Invalid pipeline identifier")
         rules = load_rules(args.rules)
         engine = sqlserver_reader(settings.source_url.get_secret_value())
+        verify_readonly_identity(engine, rules)
         run_id = store.start(args.pipeline, "external-read-only-validation")
         try:
             results = [QualityEngine(engine).check(r, store.baseline(args.pipeline, r.id)) for r in rules]
