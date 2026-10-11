@@ -1,5 +1,10 @@
 # Verification record
 
+The records below describe earlier acceptance stages. See the
+[current production hardening report](production-readiness.md) for the latest
+137-test Windows/Linux results, 92.34% combined coverage, bounded load tests,
+18-case offline AI dataset and remaining production blockers.
+
 Executed locally on 2026-10-11. Earlier failures were corrected, not counted as passes.
 
 | Area | Actual evidence |

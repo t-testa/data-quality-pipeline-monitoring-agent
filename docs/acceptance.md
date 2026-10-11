@@ -1,5 +1,8 @@
 # Production-readiness and portfolio acceptance — 2026-10-11
 
+Historical acceptance stage; superseded by the [production hardening report](production-readiness.md).
+Private publishing and subsequent evidence-layer changes occurred after this record.
+
 **Decision: suitable for a private, single-operator portfolio demonstration after local checks; not approved for production deployment. No Azure resources, paid model calls or GitHub publication were performed.**
 
 | Status | Acceptance item | Evidence / limit |

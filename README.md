@@ -2,6 +2,10 @@
 
 **Northwatch** turns database quality contracts and pipeline execution records into inspectable evidence. It includes an incremental demo loader, ten configurable check types, persistent monitoring, a private dashboard, nine read-only MCP tools, and optional tightly grounded OpenAI diagnostics.
 
+Current status: [production hardening and acceptance](docs/production-readiness.md).
+Local verification passes; unresolved image advisories and operational prerequisites
+block production approval. No paid AI validation or Azure deployment is claimed.
+
 Built as a separate project. Existing source databases and reports are accessed read-only. Source repository is intended to remain private; no cloud deployment or public endpoint is created by setup. Screenshots and demonstrations use synthetic data.
 
 ## Quick start — Windows / Python 3.12
@@ -51,7 +55,7 @@ Use ODBC Driver 18, validate server certificates, percent-encode credential char
 .\.venv\Scripts\python.exe -m pytest -q --cov=dqagent --cov-fail-under=80
 .\.venv\Scripts\pip-audit.exe -r requirements.lock --disable-pip --no-deps
 ```
-Windows restricted execution environments may block the asyncio loopback socket used by TestClient; execute tests in a normal authorized terminal. [Acceptance report](docs/acceptance.md) and [testing results](docs/testing.md) separate actual checks from unverified deployment assumptions. The CI workflow is configured for Windows/Linux tests, lint, dependency audits and container smoke checks; no GitHub-hosted run is verified yet. Hash-pinned runtime/development lockfiles are checked in.
+Windows restricted execution environments may block the asyncio loopback socket used by TestClient; execute tests in a normal authorized terminal. The [current acceptance report](docs/production-readiness.md) separates actual checks from unverified deployment assumptions. The CI workflow runs Windows/Linux tests, lint, dependency audits and container checks; the preceding published revision has a verified hosted run, while the hardening changes are locally validated until explicitly published. Hash-pinned runtime/development lockfiles are checked in. CI exports the full image inventory as well as preserving its fixable-HIGH/CRITICAL gate; an unresolved finding is not a production approval.
 
 ## Documentation
 
@@ -60,6 +64,8 @@ Windows restricted execution environments may block the asyncio loopback socket 
 - [API and MCP client configuration](docs/api-mcp.md)
 - [Security boundaries](docs/security.md)
 - [Private Azure proposal, costs and rollback](docs/deployment.md)
+- [Current Azure production design and complete costs](docs/azure-production-design.md)
+- [Individual vulnerability dispositions](docs/vulnerability-register.md)
 - [Portfolio story and demo checklist](docs/portfolio.md)
 
 ## Operations and limitations
@@ -70,9 +76,9 @@ The AI selects evidence and curated hypotheses; it does not author unverified ro
 
 ## Private GitHub publishing
 
-Repository name: `data-quality-pipeline-monitoring-agent`. If GitHub CLI access is available:
-```powershell
-gh repo create data-quality-pipeline-monitoring-agent --private --source=. --remote=origin --push
-gh repo view --json visibility,url
-```
-These commands are a future operator step; this acceptance review does not publish the repository. Verify `PRIVATE` before sharing. Do not create a public repository to bypass access limitations. Only manually reviewed synthetic screenshots and the sanitized portfolio description should be public. Follow the [publishing checklist](docs/publishing.md).
+The existing repository is `t-testa/data-quality-pipeline-monitoring-agent` and was
+verified private when published. Reverify its visibility before any future push
+or sharing; do not recreate it. Only manually reviewed synthetic screenshots and
+the sanitized portfolio description should be public. Follow the
+[publishing checklist](docs/publishing.md). Private Git hosting does not make a
+deployed application private.

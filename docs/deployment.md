@@ -1,5 +1,10 @@
 # Private Azure deployment proposal — approval required
 
+**Superseded design/cost review:** [Production architecture and complete cost model](azure-production-design.md).
+The earlier B1ms subtotal below is retained as review history, not a current approval
+quote. Bv1 is now in Microsoft's End-of-Life stage; the template uses B2als_v2,
+a separate persistent data disk and managed identity. Deployment remains blocked.
+
 **No Azure resources have been created or deployed by this project.** Local operation and container validation come first. Infrastructure templates are a reviewable starting point; a private connectivity route and dedicated SQL identity still require owner configuration.
 
 ## Proposed deployment

@@ -4,7 +4,7 @@ targetScope = 'resourceGroup'
 param subnetId string
 param location string = resourceGroup().location
 param vmName string = 'dq-monitor'
-param vmSize string = 'Standard_B1ms'
+param vmSize string = 'Standard_B2als_v2'
 param adminUsername string = 'dqoperator'
 @description('Public SSH key only. Never supply a private key.')
 param sshPublicKey string
@@ -64,6 +64,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
 resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
   name: vmName
   location: location
+  identity: { type: 'SystemAssigned' }
   properties: {
     hardwareProfile: { vmSize: vmSize }
     osProfile: {
@@ -85,6 +86,17 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
         managedDisk: { storageAccountType: 'StandardSSD_LRS' }
         deleteOption: 'Detach'
       }
+      dataDisks: [
+        {
+          lun: 0
+          name: '${vmName}-monitoring'
+          createOption: 'Empty'
+          diskSizeGB: 32
+          caching: 'None'
+          managedDisk: { storageAccountType: 'StandardSSD_LRS' }
+          deleteOption: 'Detach'
+        }
+      ]
     }
     networkProfile: { networkInterfaces: [{ id: nic.id }] }
     securityProfile: {
